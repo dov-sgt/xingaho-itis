@@ -36,7 +36,7 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
-  { title: 'Master Item', path: '/master/items', feature: 'master_item', icon: Boxes },
+  { title: 'Master Inventory', path: '/master/items', feature: 'master_item', icon: Boxes },
   { title: 'Master Vendor', path: '/master/vendors', feature: 'master_vendor', icon: Building2 },
   { title: 'Inventaris & Stok', path: '/inventory', feature: 'inventory_type_item', icon: PackageSearch },
   { title: 'Stock In', path: '/stock-in', feature: 'inventory_type_item', icon: PackagePlus },

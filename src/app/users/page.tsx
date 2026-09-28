@@ -29,6 +29,12 @@ export default function UsersPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); setErrorMsg(''); setSaving(true);
     try {
+      // SPV cannot create SPV or SuperAdmin
+      if (role === 'SPV' && ['SPV', 'SUPERADMIN'].includes(formData.role)) {
+        setErrorMsg('SPV tidak dapat membuat user SPV atau SuperAdmin');
+        setSaving(false);
+        return;
+      }
       const res = await apiFetch('/api/users', { method: editingUser ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editingUser ? { id: editingUser.id, ...formData } : formData) });
       const result = await res.json();
       if (!res.ok) { setErrorMsg(result.error); setSaving(false); return; }
@@ -52,6 +58,9 @@ export default function UsersPage() {
 
   const roleColors: Record<string, string> = { SUPERADMIN: 'bg-rose-50 text-rose-700', SPV: 'bg-amber-50 text-amber-700', STAFF: 'bg-blue-50 text-blue-700', VENDOR: 'bg-emerald-50 text-emerald-700' };
 
+  // Filter roles based on current user role
+  const availableRoles: Role[] = role === 'SUPERADMIN' ? ['SUPERADMIN', 'SPV', 'STAFF', 'VENDOR'] : role === 'SPV' ? ['STAFF', 'VENDOR'] : ['STAFF'];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -60,21 +69,21 @@ export default function UsersPage() {
       </div>
 
       <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-3 px-4">ID</th><th className="py-3 px-4">Username</th><th className="py-3 px-4">Nama</th><th className="py-3 px-4 text-center">Role</th><th className="py-3 px-4">Created</th><th className="py-3 px-4 text-center">Aksi</th></tr></thead>
+        <table className="w-full text-left text-[11px]">
+          <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-2 px-3">ID</th><th className="py-2 px-3">Username</th><th className="py-2 px-3">Nama</th><th className="py-2 px-3 text-center">Role</th><th className="py-2 px-3">Created</th><th className="py-2 px-3 text-center">Aksi</th></tr></thead>
           <tbody className="divide-y">
             {loading ? <tr><td colSpan={6} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
               users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="py-3 px-4 font-mono">{u.id}</td>
-                  <td className="py-3 px-4 font-mono font-bold">{u.username}</td>
-                  <td className="py-3 px-4">{u.name}</td>
-                  <td className="py-3 px-4 text-center"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${roleColors[u.role] || 'bg-slate-100'}`}>{u.role}</span></td>
-                  <td className="py-3 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString('id-ID')}</td>
-                  <td className="py-3 px-4 text-center">
+                  <td className="py-2 px-3 font-mono">{u.id}</td>
+                  <td className="py-2 px-3 font-mono font-bold">{u.username}</td>
+                  <td className="py-2 px-3">{u.name}</td>
+                  <td className="py-2 px-3 text-center"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleColors[u.role] || 'bg-slate-100'}`}>{u.role}</span></td>
+                  <td className="py-2 px-3 text-slate-500">{new Date(u.createdAt).toLocaleDateString('id-ID')}</td>
+                  <td className="py-2 px-3 text-center">
                     <div className="flex gap-1.5 justify-center">
-                      {can('user_management', 'update') && <button onClick={() => { setEditingUser(u); setFormData({ username: u.username, name: u.name, password: '', role: u.role }); setIsModalOpen(true); }} className="p-1.5 hover:bg-indigo-50 rounded"><Edit className="w-3.5 h-3.5" /></button>}
-                      {can('user_management', 'delete') && u.username !== 'superadmin' && <button onClick={() => handleDelete(u.id)} className="p-1.5 hover:bg-rose-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>}
+                      {can('user_management', 'update') && <button onClick={() => { setEditingUser(u); setFormData({ username: u.username, name: u.name, password: '', role: u.role }); setIsModalOpen(true); }} className="p-1 hover:bg-indigo-50 rounded"><Edit className="w-3 h-3" /></button>}
+                      {can('user_management', 'delete') && u.username !== 'superadmin' && <button onClick={() => handleDelete(u.id)} className="p-1 hover:bg-rose-50 rounded"><Trash2 className="w-3 h-3" /></button>}
                     </div>
                   </td>
                 </tr>
@@ -91,7 +100,13 @@ export default function UsersPage() {
             <form onSubmit={handleSave} className="space-y-3 text-xs">
               <div><label className="block font-semibold mb-1">Username</label><input type="text" required disabled={!!editingUser} value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl disabled:opacity-50" /></div>
               <div><label className="block font-semibold mb-1">Nama</label><input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div><label className="block font-semibold mb-1">Role</label><select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option value="SUPERADMIN">SuperAdmin</option><option value="SPV">SPV</option><option value="STAFF">Staff</option><option value="VENDOR">Vendor</option></select></div>
+              <div>
+                <label className="block font-semibold mb-1">Role</label>
+                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl">
+                  {availableRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {role === 'SPV' && <p className="text-[10px] text-slate-400 mt-1">SPV hanya bisa membuat user Staff dan Vendor</p>}
+              </div>
               <div><label className="block font-semibold mb-1">{editingUser ? 'Password baru (kosongkan jika tidak diubah)' : 'Password (min. 6 karakter)'}</label><input type="password" required={!editingUser} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>

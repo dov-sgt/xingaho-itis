@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { Headphones, Search, X, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { Headphones, Search, X, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle, XCircle, RotateCcw, Upload, FileSpreadsheet } from 'lucide-react';
 
 export default function HeadsetUserPage() {
   const { can, role, canAccess, user, apiFetch } = useAuth();
@@ -17,6 +17,10 @@ export default function HeadsetUserPage() {
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<any>(null);
 
   // Review Modal
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -78,9 +82,14 @@ export default function HeadsetUserPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Headphones className="w-5 h-5 text-indigo-600" /><span>Headset User</span></h1>
-        <p className="text-xs text-slate-500 mt-0.5">Pengajuan dari vendor → Staff approve/reject → Approve dengan nilai deposit</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Headphones className="w-5 h-5 text-indigo-600" /><span>Headset User</span></h1>
+          <p className="text-xs text-slate-500 mt-0.5">Pengajuan dari vendor → Staff approve/reject → Approve dengan nilai deposit</p>
+        </div>
+        {role === 'SUPERADMIN' && (
+          <button onClick={() => { setUploadFile(null); setUploadResult(null); setIsUploadOpen(true); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Upload className="w-4 h-4" />Upload Excel</button>
+        )}
       </div>
 
       {submissions.length > 0 && (
@@ -154,6 +163,79 @@ export default function HeadsetUserPage() {
           </div>
         </div>
       </div>
+
+      {/* Upload Excel Modal - SuperAdmin Only */}
+      {isUploadOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b">
+              <h3 className="text-sm font-bold flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-emerald-600" />Upload Excel Headset User</h3>
+              <button onClick={() => setIsUploadOpen(false)}><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border">
+                <p className="font-semibold mb-1">Format Excel (.xlsx):</p>
+                <p className="text-slate-500">date | nik | name | vendor | project | deposit | condition | status | employeeCategory | note</p>
+                <p className="text-slate-400 text-[10px] mt-1">Baris pertama = header. Baris kedua mulai data.</p>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Pilih File Excel</label>
+                <input type="file" accept=".xlsx,.xls" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" />
+              </div>
+
+              {uploadResult && (
+                <div className="p-3 rounded-xl border">
+                  <div className="font-semibold mb-2">Hasil Upload:</div>
+                  <div className="flex gap-4">
+                    <span className="text-emerald-600 font-bold">{uploadResult.success} sukses</span>
+                    <span className="text-rose-600 font-bold">{uploadResult.failed} gagal</span>
+                  </div>
+                  {uploadResult.errors.length > 0 && (
+                    <div className="mt-2 max-h-32 overflow-y-auto">
+                      {uploadResult.errors.slice(0, 10).map((err: string, i: number) => (
+                        <p key={i} className="text-rose-600 text-[10px]">{err}</p>
+                      ))}
+                      {uploadResult.errors.length > 10 && <p className="text-slate-400 text-[10px]">...dan {uploadResult.errors.length - 10} error lainnya</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <button type="button" onClick={() => setIsUploadOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
+                <button
+                  onClick={async () => {
+                    if (!uploadFile) { toast('warning', 'Pilih file Excel dulu'); return; }
+                    setUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', uploadFile);
+                      const res = await apiFetch('/api/transactions/items/upload', { method: 'POST', body: formData });
+                      const result = await res.json();
+                      if (res.ok) {
+                        setUploadResult(result);
+                        toast('success', `Upload selesai: ${result.success} sukses, ${result.failed} gagal`);
+                        fetchTransactions(); fetchPendingSubmissions();
+                      } else {
+                        toast('error', result.error || 'Upload gagal');
+                      }
+                    } catch (err: any) {
+                      toast('error', err.message);
+                    }
+                    setUploading(false);
+                  }}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Review Modal */}
       {isReviewOpen && selected && (
