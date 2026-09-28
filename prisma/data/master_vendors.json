@@ -1,0 +1,42 @@
+[
+  {
+    "code": "VND-001",
+    "name": "Swapro",
+    "contactPerson": "Rian Swapro",
+    "phone": "08123456789",
+    "email": "info@swapro.co.id",
+    "status": "Active"
+  },
+  {
+    "code": "VND-002",
+    "name": "TBS",
+    "contactPerson": "Budi TBS",
+    "phone": "08129876543",
+    "email": "support@tbs.id",
+    "status": "Active"
+  },
+  {
+    "code": "VND-003",
+    "name": "Akulaku",
+    "contactPerson": "Ferry Akulaku",
+    "phone": "08131122334",
+    "email": "ops@akulaku.com",
+    "status": "Active"
+  },
+  {
+    "code": "VND-004",
+    "name": "GGP / Global",
+    "contactPerson": "Hendra",
+    "phone": "08112233445",
+    "email": "sales@global.com",
+    "status": "Active"
+  },
+  {
+    "code": "VND-005",
+    "name": "Logitech Official",
+    "contactPerson": "Sales Logitech",
+    "phone": "021-5551234",
+    "email": "b2b@logitech.id",
+    "status": "Active"
+  }
+]

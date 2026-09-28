@@ -1,0 +1,26 @@
+[
+  {
+    "itemType": "CPU",
+    "qty": 9,
+    "brokenCount": 9,
+    "note": "CPU unit lama kanibal sparepart"
+  },
+  {
+    "itemType": "Monitor",
+    "qty": 14,
+    "brokenCount": 14,
+    "note": "Monitor garis / backlight mati"
+  },
+  {
+    "itemType": "HDD",
+    "qty": 8,
+    "brokenCount": 8,
+    "note": "Bad sector dan tidak terdeteksi"
+  },
+  {
+    "itemType": "Junk Peripherals",
+    "qty": 20,
+    "brokenCount": 20,
+    "note": "Kabel, adaptor, headset rusak fisik / digigit tikus"
+  }
+]

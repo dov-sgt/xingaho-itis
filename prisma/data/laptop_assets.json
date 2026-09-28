@@ -1,0 +1,142 @@
+[
+  {
+    "item": "Laptop Acer core one 14 Z2-485 I5 Ram 8 Giga",
+    "user": "Tyastt",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus Celeron Ram 4 Giga",
+    "user": "Amar",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus Core I3 Ram 8 Giga",
+    "user": "Juniardi Tri Santoso",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus X441BA",
+    "user": "Empty",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus X441BA",
+    "user": "Zody",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Advan 1701",
+    "user": "Fauziah",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop HP Ram 16 Gb",
+    "user": "Mr. Frans",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Acer core one 14 Z2-485 I5 Ram 8 Giga",
+    "user": "Mrs Martha",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus ICore 3",
+    "user": "Jaya Prana",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus ICore 3",
+    "user": "Intan Permata Sari",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Lenovo Idea Pad Ram 4 SSD",
+    "user": "Uun",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop HP 240 G6 Core I3",
+    "user": "Unty",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop HP 240 G6 Core I3",
+    "user": "Solah",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Advan 1701",
+    "user": "Nazriel",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Asus E410MA",
+    "user": "Widia Astuti",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop lenovo Think pad Core I3 (old)",
+    "user": "Sigit IT",
+    "status": "Broken"
+  },
+  {
+    "item": "Laptop Advan 1701",
+    "user": "Ester",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Advan 1701",
+    "user": "Agung Achmad S",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Advan 1701",
+    "user": "Lusia Rike",
+    "status": "Good"
+  },
+  {
+    "item": "Laptop Advan Workmate Amd Ryzen 5",
+    "user": "Rahma",
+    "status": "New"
+  },
+  {
+    "item": "Laptop Advan Workmate Amd Ryzen 5",
+    "user": "Yenni Ardiana",
+    "status": "New"
+  },
+  {
+    "item": "Laptop Advan Workmate Amd Ryzen 5",
+    "user": "Alfiah",
+    "status": "New"
+  },
+  {
+    "item": "Laptop Advan Workmate Amd Ryzen 5",
+    "user": "Fachri",
+    "status": "New"
+  },
+  {
+    "item": "Laptop Advan Workmate Amd Ryzen 5",
+    "user": "Empty",
+    "status": "New"
+  },
+  {
+    "item": "Laptop Asus X441U",
+    "user": "Empty",
+    "status": "Second Good"
+  },
+  {
+    "item": "Laptop Asus",
+    "user": "Empty",
+    "status": "Second Broken Battery"
+  },
+  {
+    "item": "Laptop Asus X441BA",
+    "user": "Empty",
+    "status": "Second Good"
+  },
+  {
+    "item": "Laptop HP 240 G6 Core I3",
+    "user": "Empty",
+    "status": "Second Broken Fan"
+  }
+]

@@ -1,0 +1,188 @@
+[
+  {
+    "code": "XHPC-2026-0001",
+    "typeItem": "Computer",
+    "namaItem": "PC Windows 11",
+    "brand": "Buid Up"
+  },
+  {
+    "code": "XHPC-2026-0002",
+    "typeItem": "Computer",
+    "namaItem": "PC Windows 10",
+    "brand": "Buid Up"
+  },
+  {
+    "code": "XHPC-2026-0003",
+    "typeItem": "Computer",
+    "namaItem": "Laptop",
+    "brand": "Advan"
+  },
+  {
+    "code": "XHPC-2026-0004",
+    "typeItem": "Computer",
+    "namaItem": "Laptop",
+    "brand": "Asus"
+  },
+  {
+    "code": "XHPC-2026-0005",
+    "typeItem": "Computer",
+    "namaItem": "Laptop",
+    "brand": "HP"
+  },
+  {
+    "code": "XHPC-2026-0006",
+    "typeItem": "Computer",
+    "namaItem": "Laptop",
+    "brand": "Lenovo"
+  },
+  {
+    "code": "XHPC-2026-0007",
+    "typeItem": "Computer",
+    "namaItem": "Laptop",
+    "brand": "Acer"
+  },
+  {
+    "code": "XHPC-2026-0008",
+    "typeItem": "Computer",
+    "namaItem": "SSD",
+    "brand": "General"
+  },
+  {
+    "code": "XHAC-2026-0001",
+    "typeItem": "Accessories",
+    "namaItem": "Headset H110",
+    "brand": "Logitech"
+  },
+  {
+    "code": "XHAC-2026-0002",
+    "typeItem": "Accessories",
+    "namaItem": "Headset H150",
+    "brand": "Logitech"
+  },
+  {
+    "code": "XHAC-2026-0003",
+    "typeItem": "Accessories",
+    "namaItem": "Mouse",
+    "brand": "General"
+  },
+  {
+    "code": "XHAC-2026-0003",
+    "typeItem": "Accessories",
+    "namaItem": "TPlug Adapter",
+    "brand": "Broco"
+  },
+  {
+    "code": "XHAC-2026-0004",
+    "typeItem": "Accessories",
+    "namaItem": "Barrel",
+    "brand": "General"
+  },
+  {
+    "code": "XHAC-2026-0005",
+    "typeItem": "Accessories",
+    "namaItem": "Converter Audio",
+    "brand": "General"
+  },
+  {
+    "code": "XHSP-2026-0001",
+    "typeItem": "Smartphone",
+    "namaItem": "Handphone",
+    "brand": "Xiaomi"
+  },
+  {
+    "code": "XHSP-2026-0002",
+    "typeItem": "Smartphone",
+    "namaItem": "Handphone",
+    "brand": "Poco"
+  },
+  {
+    "code": "XHSP-2026-0003",
+    "typeItem": "Smartphone",
+    "namaItem": "Handphone",
+    "brand": "Infinix"
+  },
+  {
+    "code": "XHMD-2026-0001",
+    "typeItem": "Media",
+    "namaItem": "Proyektor",
+    "brand": "Epson"
+  },
+  {
+    "code": "XHMD-2026-0002",
+    "typeItem": "Media",
+    "namaItem": "CCTV",
+    "brand": "General"
+  },
+  {
+    "code": "XHMD-2026-0003",
+    "typeItem": "Media",
+    "namaItem": "DVR",
+    "brand": "General"
+  },
+  {
+    "code": "XHEQ-2026-0001",
+    "typeItem": "Equipment",
+    "namaItem": "Lan Tester",
+    "brand": "General"
+  },
+  {
+    "code": "XHNW-2026-0001",
+    "typeItem": "Networking",
+    "namaItem": "Router CCR",
+    "brand": "Mikrotik"
+  },
+  {
+    "code": "XHNW-2026-0002",
+    "typeItem": "Networking",
+    "namaItem": "Router Board",
+    "brand": "Mikrotik"
+  },
+  {
+    "code": "XHNW-2026-0003",
+    "typeItem": "Networking",
+    "namaItem": "Switch 5",
+    "brand": "General"
+  },
+  {
+    "code": "XHNW-2026-0004",
+    "typeItem": "Networking",
+    "namaItem": "Switch 8",
+    "brand": "General"
+  },
+  {
+    "code": "XHNW-2026-0005",
+    "typeItem": "Networking",
+    "namaItem": "Switch 16",
+    "brand": "General"
+  },
+  {
+    "code": "XHNW-2026-0006",
+    "typeItem": "Networking",
+    "namaItem": "Switch 48",
+    "brand": "General"
+  },
+  {
+    "code": "XHNW-2026-0007",
+    "typeItem": "Networking",
+    "namaItem": "Access Point",
+    "brand": "General"
+  },
+  {
+    "code": "XHSV-2026-0001",
+    "typeItem": "Server",
+    "namaItem": "Server",
+    "brand": "Dell"
+  },
+  {
+    "code": "XHSV-2026-0002",
+    "typeItem": "Server",
+    "namaItem": "Server",
+    "brand": "HP"
+  },
+  {
+    "code": "XHOT-2026-0001",
+    "typeItem": "Others",
+    "namaItem": "Other",
+    "brand": "Other"
+  }
+]

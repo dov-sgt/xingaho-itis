@@ -1,0 +1,74 @@
+[
+  {
+    "itemCode": "XHPC-2026-0002",
+    "itemName": "PC Windows 10",
+    "category": "Computer",
+    "currentStock": 11,
+    "inStock": 80,
+    "outStock": 69,
+    "note": "Aktif digunakan tim operasional & GoTo"
+  },
+  {
+    "itemCode": "XHPC-2026-0001",
+    "itemName": "PC Windows 11",
+    "category": "Computer",
+    "currentStock": 5,
+    "inStock": 70,
+    "outStock": 65,
+    "note": "Update Win 11 terbaru"
+  },
+  {
+    "itemCode": "XHAC-2026-0001",
+    "itemName": "Headset Logitech H110",
+    "category": "Accessories",
+    "currentStock": 35,
+    "inStock": 120,
+    "outStock": 85,
+    "note": "Standar agent headset"
+  },
+  {
+    "itemCode": "XHAC-2026-0002",
+    "itemName": "Headset Logitech H150",
+    "category": "Accessories",
+    "currentStock": 26,
+    "inStock": 80,
+    "outStock": 54,
+    "note": "Dual jack headset"
+  },
+  {
+    "itemCode": "XHAC-2026-0003",
+    "itemName": "Mouse HP / General",
+    "category": "Accessories",
+    "currentStock": 25,
+    "inStock": 150,
+    "outStock": 125,
+    "note": "Mouse operasional"
+  },
+  {
+    "itemCode": "XHPC-2026-0008",
+    "itemName": "SSD SATA 256GB",
+    "category": "Computer",
+    "currentStock": 4,
+    "inStock": 40,
+    "outStock": 36,
+    "note": "Upgrade unit PC operasional"
+  },
+  {
+    "itemCode": "XHAC-2026-0004",
+    "itemName": "TPlug Adapter Broco",
+    "category": "Accessories",
+    "currentStock": 9,
+    "inStock": 50,
+    "outStock": 41,
+    "note": "Staker listrik T"
+  },
+  {
+    "itemCode": "XHSP-2026-0001",
+    "itemName": "Handphone Xiaomi / Poco",
+    "category": "Smartphone",
+    "currentStock": 8,
+    "inStock": 30,
+    "outStock": 22,
+    "note": "Device test & verifikasi"
+  }
+]

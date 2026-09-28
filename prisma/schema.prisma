@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  name      String
+  password  String
+  role      String
+  vendorId  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MasterItem {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  typeItem  String
+  namaItem  String
+  brand     String
+  updateAt  DateTime @default(now())
+  updateBy  String?
+}
+
+model MasterVendor {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          String
+  serviceType   String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model InventoryStock {
+  id           Int      @id @default(autoincrement())
+  itemCode     String?  @unique
+  itemName     String
+  category     String
+  currentStock Int      @default(0)
+  inStock      Int      @default(0)
+  outStock     Int      @default(0)
+  note         String?
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model InventoryHistory {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @default(now())
+  category  String
+  stock     Int      @default(0)
+  inQty     Int      @default(0)
+  outQty    Int      @default(0)
+  note      String?
+  updateBy  String?
+}
+
+model LaptopAsset {
+  id     Int      @id @default(autoincrement())
+  item   String
+  user   String
+  status String   @default("Good")
+  date   DateTime @default(now())
+}
+
+model BrokenAsset {
+  id          Int      @id @default(autoincrement())
+  itemType    String
+  qty         Int      @default(0)
+  brokenCount Int      @default(0)
+  note        String?
+  date        DateTime @default(now())
+}
+
+model TransactionItem {
+  id                 Int      @id @default(autoincrement())
+  vendorSubmissionId Int?
+  date               String
+  employeeCategory   String
+  nik                String
+  name               String
+  condition          String
+  vendor             String
+  deposit            Float    @default(0)
+  note               String?
+  project            String?
+  status             String   @default("Pending")
+  approvedBy         String?
+  approvedAt         DateTime?
+  returnCondition    String?
+  returnPrice        Float?
+  returnNote         String?
+  returnedAt         DateTime?
+  updatedAt          DateTime @default(now()) @updatedAt
+  updatedBy          String?
+}
+
+model StockOutTransaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  category    String
+  itemCode    String?
+  itemName    String
+  outQty      Int      @default(1)
+  note        String?
+  status      String   @default("Pending")
+  requestedBy String
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PurchaseRequest {
+  id         Int      @id @default(autoincrement())
+  prNumber   String   @unique
+  date       DateTime @default(now())
+  typeItem   String
+  itemCode   String?
+  itemName   String
+  biaya      Float    @default(0)
+  qty        Int      @default(1)
+  diskon     Float    @default(0)
+  totalPrice Float    @default(0)
+  note       String?
+  details    String?
+  status     String   @default("Pending")
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updateAt   DateTime @default(now()) @updatedAt
+  updateBy   String?
+}
+
+model DeliveryOrder {
+  id          Int       @id @default(autoincrement())
+  doNumber    String    @unique
+  prId        Int
+  prNumber    String?
+  vendorName  String
+  itemCode    String?
+  itemName    String
+  qtyOrdered  Int       @default(0)
+  qtyReceived Int       @default(0)
+  date        DateTime  @default(now())
+  recipient   String
+  status      String    @default("Pending")
+  note        String?
+  receivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model VendorSubmission {
+  id             Int      @id @default(autoincrement())
+  submissionCode String   @unique
+  date           DateTime @default(now())
+  vendorName     String
+  nik            String?
+  karyawanName   String?
+  project        String?
+  headsetStatus  String?
+  title          String
+  description    String?
+  category       String   @default("Pengajuan Headset")
+  proposedPrice  Float    @default(0)
+  status         String   @default("Pending")
+  adminNote      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Booking {
+  id            Int      @id @default(autoincrement())
+  bookingCode   String   @unique
+  borrowerName  String
+  itemType      String   // Projector, Laptop, HP, etc.
+  startDate     String
+  startTime     String?
+  endDate       String
+  endTime       String?
+  location      String
+  status        String   @default("Pending")
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ServisAsset {
+  id            Int      @id @default(autoincrement())
+  servisCode    String   @unique
+  date          DateTime @default(now())
+  itemName      String
+  teknisiName   String
+  status        String   @default("Pending")
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LogRuangServer {
+  id            Int      @id @default(autoincrement())
+  logCode       String   @unique
+  date          DateTime @default(now())
+  nama          String
+  jamMasuk      String
+  jamKeluar     String?
+  keperluan     String
+  createdAt     DateTime @default(now())
+}
