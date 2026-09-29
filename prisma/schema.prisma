@@ -12,7 +12,7 @@ model User {
   username  String   @unique
   name      String
   password  String
-  role      String
+  role      String   // SUPERADMIN, MANAGER_OPS, SPV_OPS, LEADER_OPS, AGEN, SPV_QC, STAFF_QC, SPV_HR, STAFF_HR
   vendorId  Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -181,7 +181,7 @@ model Booking {
   id            Int      @id @default(autoincrement())
   bookingCode   String   @unique
   borrowerName  String
-  itemType      String   // Projector, Laptop, HP, etc.
+  itemType      String
   startDate     String
   startTime     String?
   endDate       String
@@ -214,4 +214,91 @@ model LogRuangServer {
   jamKeluar     String?
   keperluan     String
   createdAt     DateTime @default(now())
+}
+
+// ============ OPS: PENAGIHAN NASABAH ============
+
+model Nasabah {
+  id              Int      @id @default(autoincrement())
+  nasabahCode     String   @unique
+  nama            String
+  nik             String?
+  phone           String
+  email           String?
+  alamat         String?
+  loanAmount      Float    @default(0)
+  dueDate         DateTime?
+  status          String   @default("Active") // Active, Overdue, Paid, Default
+  assignedTo      String?  // Agen ID
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Remark {
+  id              Int      @id @default(autoincrement())
+  nasabahId       Int
+  date            DateTime @default(now())
+  agenName        String
+  remark          String
+  promiseToPay    Boolean  @default(false)
+  promiseDate     DateTime?
+  status          String   @default("Pending") // Pending, Contacted, Promised, Paid
+  createdAt       DateTime @default(now())
+}
+
+model PaymentAchievement {
+  id              Int      @id @default(autoincrement())
+  date            DateTime @default(now())
+  agenName        String
+  nasabahId       Int?
+  nasabahName     String
+  amount          Float    @default(0)
+  paymentMethod   String?  // Cash, Transfer, VA, etc.
+  status          String   @default("Pending") // Pending, Confirmed, Rejected
+  notedBy         String?
+  createdAt       DateTime @default(now())
+}
+
+// ============ QC: COMPLIANCE OJK ============
+
+model RecordingReview {
+  id              Int      @id @default(autoincrement())
+  reviewCode      String   @unique
+  date            DateTime @default(now())
+  agenName        String
+  nasabahName     String?
+  recordingUrl    String?  // Link to recording server
+  duration        String?
+  reviewedBy      String
+  compliance      String   // Compliant, Non-Compliant
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+model Finding {
+  id              Int      @id @default(autoincrement())
+  findingCode     String   @unique
+  date            DateTime @default(now())
+  agenName        String
+  findingType     String   // Language, Procedure, Ethics, Other
+  severity        String   // Low, Medium, High, Critical
+  description     String
+  evidence        String?  // Link to recording or document
+  status          String   @default("Open") // Open, In Progress, Resolved, Escalated
+  resolvedBy      String?
+  resolutionNote  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model QCReport {
+  id              Int      @id @default(autoincrement())
+  reportCode      String   @unique
+  period          String   // e.g., "2026-09"
+  totalReviewed   Int      @default(0)
+  totalCompliant  Int      @default(0)
+  totalNonCompliant Int    @default(0)
+  totalFindings   Int      @default(0)
+  createdBy       String?
+  createdAt       DateTime @default(now())
 }

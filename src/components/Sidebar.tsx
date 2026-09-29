@@ -19,11 +19,14 @@ import {
   Server,
   ShieldCheck,
   PackageOpen,
-  Projector,
   PackagePlus,
   Wrench,
   DoorOpen,
   Calendar,
+  AlertTriangle,
+  UserCheck,
+  CreditCard,
+  ClipboardCheck,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -48,6 +51,11 @@ const MENU_ITEMS: MenuItem[] = [
   { title: 'Purchase Request', path: '/transactions/purchase-requests', feature: 'purchase_request', icon: ShoppingCart },
   { title: 'Delivery Order', path: '/transactions/delivery-orders', feature: 'delivery_order', icon: Truck },
   { title: 'Pengajuan Vendor', path: '/transactions/vendor-submissions', feature: 'vendor_submission', icon: FileText },
+  { title: 'Data Nasabah', path: '/nasabah', feature: 'transaction_item', icon: Users },
+  { title: 'Remarks', path: '/remarks', feature: 'transaction_item', icon: ClipboardCheck },
+  { title: 'Payment Achievement', path: '/payment-achievements', feature: 'transaction_item', icon: CreditCard },
+  { title: 'Recording Review', path: '/qc/recording-reviews', feature: 'transaction_item', icon: Headphones },
+  { title: 'QC Findings', path: '/qc/findings', feature: 'transaction_item', icon: AlertTriangle },
   { title: 'User Management', path: '/users', feature: 'user_management', icon: Users },
   { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
 ];
@@ -59,9 +67,12 @@ export default function Sidebar() {
 
   const roleColors: Record<string, string> = {
     SUPERADMIN: 'bg-rose-500/10 text-rose-600 border-rose-200',
-    SPV: 'bg-amber-500/10 text-amber-600 border-amber-200',
-    STAFF: 'bg-blue-500/10 text-blue-600 border-blue-200',
-    VENDOR: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+    MANAGER_OPS: 'bg-amber-500/10 text-amber-600 border-amber-200',
+    SPV_OPS: 'bg-amber-500/10 text-amber-600 border-amber-200',
+    LEADER_OPS: 'bg-blue-500/10 text-blue-600 border-blue-200',
+    AGEN: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+    SPV_QC: 'bg-purple-500/10 text-purple-600 border-purple-200',
+    STAFF_QC: 'bg-cyan-500/10 text-cyan-600 border-cyan-200',
   };
 
   return (
