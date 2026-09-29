@@ -8,12 +8,17 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding Xinghao ITIS database...');
 
-  // 1. Users (with hashed passwords)
+  // 1. Users (with hashed passwords and divisions)
   const users = [
-    { username: 'superadmin', name: 'Sigit SuperAdmin IT', password: 'admin123', role: 'SUPERADMIN' },
-    { username: 'spv', name: 'Budi SPV IT', password: 'spv123', role: 'SPV' },
-    { username: 'staff', name: 'Dika IT Staff', password: 'staff123', role: 'STAFF' },
-    { username: 'vendor', name: 'Swapro Vendor Rep', password: 'vendor123', role: 'VENDOR', vendorId: 1 },
+    { username: 'superadmin', name: 'Sigit SuperAdmin', password: 'admin123', role: 'SUPERADMIN', division: null },
+    { username: 'manager_ops', name: 'Budi Manager Ops', password: 'manager123', role: 'MANAGER_OPS', division: 'OPS' },
+    { username: 'spv_ops', name: 'Dika SPV Ops', password: 'spvops123', role: 'SPV_OPS', division: 'OPS' },
+    { username: 'leader_ops', name: 'Rian Leader Ops', password: 'leader123', role: 'LEADER_OPS', division: 'OPS' },
+    { username: 'agen', name: 'Faisal Agen', password: 'agen123', role: 'AGEN', division: 'OPS' },
+    { username: 'spv_qc', name: 'Sari SPV QC', password: 'spvqc123', role: 'SPV_QC', division: 'QC' },
+    { username: 'staff_qc', name: 'Andi Staff QC', password: 'staffqc123', role: 'STAFF_QC', division: 'QC' },
+    { username: 'spv_hr', name: 'Rina SPV HR', password: 'spvhr123', role: 'SPV_HR', division: 'HR' },
+    { username: 'staff_hr', name: 'Dodi Staff HR', password: 'staffhr123', role: 'STAFF_HR', division: 'HR' },
   ];
 
   for (const u of users) {

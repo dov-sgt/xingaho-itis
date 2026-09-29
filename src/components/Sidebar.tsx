@@ -4,29 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Feature } from '@/lib/rbac';
+import { Feature, canAccessMenu, canAccessDivision } from '@/lib/rbac';
 import {
-  LayoutDashboard,
-  Boxes,
-  Building2,
-  PackageSearch,
-  Headphones,
-  ShoppingCart,
-  Truck,
-  FileText,
-  Users,
-  BarChart3,
-  Server,
-  ShieldCheck,
-  PackageOpen,
-  PackagePlus,
-  Wrench,
-  DoorOpen,
-  Calendar,
-  AlertTriangle,
-  UserCheck,
-  CreditCard,
-  ClipboardCheck,
+  LayoutDashboard, Boxes, Building2, PackageSearch, Headphones, ShoppingCart,
+  Truck, FileText, Users, BarChart3, Server, ShieldCheck, PackageOpen,
+  PackagePlus, Wrench, DoorOpen, Calendar, AlertTriangle, ClipboardCheck,
+  CreditCard, UserCheck, Briefcase, CalendarOff,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -34,10 +17,9 @@ interface MenuItem {
   path: string;
   feature: Feature;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
 }
 
-const MENU_ITEMS: MenuItem[] = [
+const IT_MENUS: MenuItem[] = [
   { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
   { title: 'Master Inventory', path: '/master/items', feature: 'master_item', icon: Boxes },
   { title: 'Master Vendor', path: '/master/vendors', feature: 'master_vendor', icon: Building2 },
@@ -51,19 +33,42 @@ const MENU_ITEMS: MenuItem[] = [
   { title: 'Purchase Request', path: '/transactions/purchase-requests', feature: 'purchase_request', icon: ShoppingCart },
   { title: 'Delivery Order', path: '/transactions/delivery-orders', feature: 'delivery_order', icon: Truck },
   { title: 'Pengajuan Vendor', path: '/transactions/vendor-submissions', feature: 'vendor_submission', icon: FileText },
+  { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
+];
+
+const OPS_MENUS: MenuItem[] = [
+  { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
   { title: 'Data Nasabah', path: '/nasabah', feature: 'transaction_item', icon: Users },
   { title: 'Remarks', path: '/remarks', feature: 'transaction_item', icon: ClipboardCheck },
   { title: 'Payment Achievement', path: '/payment-achievements', feature: 'transaction_item', icon: CreditCard },
+  { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
+];
+
+const QC_MENUS: MenuItem[] = [
+  { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
   { title: 'Recording Review', path: '/qc/recording-reviews', feature: 'transaction_item', icon: Headphones },
   { title: 'QC Findings', path: '/qc/findings', feature: 'transaction_item', icon: AlertTriangle },
+  { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
+];
+
+const HR_MENUS: MenuItem[] = [
+  { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
+  { title: 'Employee Data', path: '/hr/employees', feature: 'user_management', icon: Briefcase },
+  { title: 'Leave Request', path: '/hr/leave-requests', feature: 'user_management', icon: CalendarOff },
   { title: 'User Management', path: '/users', feature: 'user_management', icon: Users },
   { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
 ];
 
+const DIVISION_SECTIONS = [
+  { key: 'IT', label: 'IT Division', menus: IT_MENUS },
+  { key: 'OPS', label: 'Ops Division', menus: OPS_MENUS },
+  { key: 'QC', label: 'QC Division', menus: QC_MENUS },
+  { key: 'HR', label: 'HR Division', menus: HR_MENUS },
+] as const;
+
 export default function Sidebar() {
   const pathname = usePathname();
-  const { canAccess, role } = useAuth();
-  const accessibleMenus = MENU_ITEMS.filter((item) => canAccess(item.feature));
+  const { canAccess, role, user } = useAuth();
 
   const roleColors: Record<string, string> = {
     SUPERADMIN: 'bg-rose-500/10 text-rose-600 border-rose-200',
@@ -73,6 +78,8 @@ export default function Sidebar() {
     AGEN: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
     SPV_QC: 'bg-purple-500/10 text-purple-600 border-purple-200',
     STAFF_QC: 'bg-cyan-500/10 text-cyan-600 border-cyan-200',
+    SPV_HR: 'bg-pink-500/10 text-pink-600 border-pink-200',
+    STAFF_HR: 'bg-orange-500/10 text-orange-600 border-orange-200',
   };
 
   return (
@@ -93,27 +100,44 @@ export default function Sidebar() {
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-400 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            Hak Akses:
-          </span>
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${roleColors[role] || 'bg-slate-800 text-slate-300'}`}>
             {role}
           </span>
+          {user?.division && (
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${roleColors[role] || 'bg-slate-800 text-slate-300'}`}>
+              {user.division}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Menu Operasional</div>
-        {accessibleMenus.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+      <div className="flex-1 overflow-y-auto py-4 px-3">
+        {DIVISION_SECTIONS.map((section) => {
+          // SuperAdmin sees all; others only see their own division
+          if (role !== 'SUPERADMIN' && user?.division !== section.key) return null;
+
+          const visibleMenus = section.menus.filter((item) => canAccessMenu(role, item.feature));
+          if (visibleMenus.length === 0) return null;
+
           return (
-            <Link key={item.path} href={item.path} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-              <div className="flex items-center space-x-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span>{item.title}</span>
+            <div key={section.key} className="mb-4">
+              <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                {section.label}
               </div>
-              {item.badge && <span className="bg-indigo-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{item.badge}</span>}
-            </Link>
+              <div className="space-y-1">
+                {visibleMenus.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                  return (
+                    <Link key={item.path} href={item.path} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                        <span>{item.title}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>

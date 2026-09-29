@@ -13,6 +13,7 @@ model User {
   name      String
   password  String
   role      String   // SUPERADMIN, MANAGER_OPS, SPV_OPS, LEADER_OPS, AGEN, SPV_QC, STAFF_QC, SPV_HR, STAFF_HR
+  division  String?  // IT, QC, OPS, HR
   vendorId  Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,8 +229,8 @@ model Nasabah {
   alamat         String?
   loanAmount      Float    @default(0)
   dueDate         DateTime?
-  status          String   @default("Active") // Active, Overdue, Paid, Default
-  assignedTo      String?  // Agen ID
+  status          String   @default("Active")
+  assignedTo      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -242,7 +243,7 @@ model Remark {
   remark          String
   promiseToPay    Boolean  @default(false)
   promiseDate     DateTime?
-  status          String   @default("Pending") // Pending, Contacted, Promised, Paid
+  status          String   @default("Pending")
   createdAt       DateTime @default(now())
 }
 
@@ -253,8 +254,8 @@ model PaymentAchievement {
   nasabahId       Int?
   nasabahName     String
   amount          Float    @default(0)
-  paymentMethod   String?  // Cash, Transfer, VA, etc.
-  status          String   @default("Pending") // Pending, Confirmed, Rejected
+  paymentMethod   String?
+  status          String   @default("Pending")
   notedBy         String?
   createdAt       DateTime @default(now())
 }
@@ -267,10 +268,10 @@ model RecordingReview {
   date            DateTime @default(now())
   agenName        String
   nasabahName     String?
-  recordingUrl    String?  // Link to recording server
+  recordingUrl    String?
   duration        String?
   reviewedBy      String
-  compliance      String   // Compliant, Non-Compliant
+  compliance      String
   notes           String?
   createdAt       DateTime @default(now())
 }
@@ -280,25 +281,43 @@ model Finding {
   findingCode     String   @unique
   date            DateTime @default(now())
   agenName        String
-  findingType     String   // Language, Procedure, Ethics, Other
-  severity        String   // Low, Medium, High, Critical
+  findingType     String
+  severity        String
   description     String
-  evidence        String?  // Link to recording or document
-  status          String   @default("Open") // Open, In Progress, Resolved, Escalated
+  evidence        String?
+  status          String   @default("Open")
   resolvedBy      String?
   resolutionNote  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
-model QCReport {
-  id              Int      @id @default(autoincrement())
-  reportCode      String   @unique
-  period          String   // e.g., "2026-09"
-  totalReviewed   Int      @default(0)
-  totalCompliant  Int      @default(0)
-  totalNonCompliant Int    @default(0)
-  totalFindings   Int      @default(0)
-  createdBy       String?
-  createdAt       DateTime @default(now())
+// ============ HR: EMPLOYEE & LEAVE ============
+
+model Employee {
+  id            Int      @id @default(autoincrement())
+  employeeCode  String   @unique
+  nik           String   @unique
+  name          String
+  department    String
+  position      String
+  joinDate      DateTime
+  status        String   @default("Active")
+  phone         String?
+  email         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LeaveRequest {
+  id            Int      @id @default(autoincrement())
+  requestCode   String   @unique
+  employeeId    Int
+  leaveType     String
+  startDate     DateTime
+  endDate       DateTime
+  reason        String
+  status        String   @default("Pending")
+  approvedBy    String?
+  createdAt     DateTime @default(now())
 }
