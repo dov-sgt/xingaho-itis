@@ -1,15 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Feature, canAccessMenu, canAccessDivision } from '@/lib/rbac';
+import { Feature, canAccessMenu } from '@/lib/rbac';
 import {
   LayoutDashboard, Boxes, Building2, PackageSearch, Headphones, ShoppingCart,
   Truck, FileText, Users, BarChart3, Server, ShieldCheck, PackageOpen,
   PackagePlus, Wrench, DoorOpen, Calendar, AlertTriangle, ClipboardCheck,
-  CreditCard, UserCheck, Briefcase, CalendarOff,
+  CreditCard, Briefcase, CalendarOff, ChevronDown, ChevronRight,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -69,6 +69,11 @@ const DIVISION_SECTIONS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { canAccess, role, user } = useAuth();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ IT: true, OPS: true, QC: true, HR: true });
+
+  const toggleExpand = (key: string) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const roleColors: Record<string, string> = {
     SUPERADMIN: 'bg-rose-500/10 text-rose-600 border-rose-200',
@@ -112,31 +117,38 @@ export default function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-4 px-3">
         {DIVISION_SECTIONS.map((section) => {
-          // SuperAdmin sees all; others only see their own division
           if (role !== 'SUPERADMIN' && user?.division !== section.key) return null;
 
           const visibleMenus = section.menus.filter((item) => canAccessMenu(role, item.feature));
           if (visibleMenus.length === 0) return null;
 
+          const isExpanded = expanded[section.key];
+
           return (
-            <div key={section.key} className="mb-4">
-              <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                {section.label}
-              </div>
-              <div className="space-y-1">
-                {visibleMenus.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
-                  return (
-                    <Link key={item.path} href={item.path} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-                      <div className="flex items-center space-x-3">
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                        <span>{item.title}</span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+            <div key={section.key} className="mb-2">
+              <button
+                onClick={() => toggleExpand(section.key)}
+                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors"
+              >
+                <span>{section.label}</span>
+                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+              {isExpanded && (
+                <div className="space-y-1 mt-1">
+                  {visibleMenus.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                    return (
+                      <Link key={item.path} href={item.path} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+                        <div className="flex items-center space-x-3">
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                          <span>{item.title}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
