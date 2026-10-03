@@ -51,7 +51,7 @@ export default function LogRuangServerPage() {
     return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3></div>);
   }
 
-  const canEdit = ['SPV', 'SUPERADMIN'].includes(role);
+  const canEdit = ['SPV_OPS', 'MANAGER_OPS', 'SUPERADMIN'].includes(role);
 
   return (
     <div className="space-y-6">

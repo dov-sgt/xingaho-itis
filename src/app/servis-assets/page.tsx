@@ -59,8 +59,8 @@ export default function ServisAssetsPage() {
   }
 
   const statusColors: Record<string, string> = { Pending: 'bg-amber-50 text-amber-700', Ongoing: 'bg-blue-50 text-blue-700', Done: 'bg-emerald-50 text-emerald-700' };
-  const canEdit = ['SPV', 'SUPERADMIN'].includes(role);
-  const canCreate = ['SPV', 'SUPERADMIN', 'STAFF'].includes(role);
+  const canEdit = ['SPV_OPS', 'MANAGER_OPS', 'SUPERADMIN'].includes(role);
+  const canCreate = ['SPV_OPS', 'MANAGER_OPS', 'LEADER_OPS', 'SUPERADMIN'].includes(role);
 
   return (
     <div className="space-y-6">

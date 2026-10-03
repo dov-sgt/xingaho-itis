@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
   try {
     const body = await req.json();
-    const { borrowerName, startDate, startTime, endDate, endTime, location, createdBy } = body;
+    const { borrowerName, itemType, startDate, startTime, endDate, endTime, location, createdBy } = body;
     const errors = collectErrors([
       validateRequired(borrowerName, 'Nama Peminjam'),
       validateString(borrowerName, 'Nama Peminjam', 1, 255),
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const bookingCode = `PRJ-2026-${(count + 1).toString().padStart(4, '0')}`;
 
     const booking = await prisma.booking.create({
-      data: { bookingCode, borrowerName, startDate, startTime: startTime || null, endDate, endTime: endTime || null, location, status: 'Pending', createdBy: createdBy || 'Staff IT' },
+      data: { bookingCode, borrowerName, itemType: itemType || 'Projector', startDate, startTime: startTime || null, endDate, endTime: endTime || null, location, status: 'Pending', createdBy: createdBy || 'Staff IT' },
     });
     return ok(booking, 201);
   } catch (error: any) { return serverError(error.message); }

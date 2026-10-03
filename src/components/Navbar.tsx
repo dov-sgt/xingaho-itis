@@ -40,13 +40,13 @@ export default function Navbar() {
             <ShieldAlert className="w-3.5 h-3.5 text-indigo-500" />
             Simulasi Role:
           </span>
-          {(['SUPERADMIN', 'SPV', 'STAFF', 'VENDOR'] as Role[]).map((r) => (
+          {(['SUPERADMIN', 'MANAGER_OPS', 'SPV_OPS', 'LEADER_OPS', 'AGEN', 'SPV_QC', 'STAFF_QC', 'SPV_HR', 'STAFF_HR'] as Role[]).map((r) => (
             <button
               key={r}
               onClick={() => {
                 switchRole(r);
                 toast('success', `Role diubah menjadi ${r}`);
-                if (r === 'VENDOR') {
+                if (r === 'AGEN') {
                   router.push('/transactions/vendor-submissions');
                 }
               }}

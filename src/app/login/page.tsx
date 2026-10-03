@@ -36,7 +36,7 @@ export default function LoginPage() {
   const handleQuickLogin = (role: Role, user: string) => {
     login(user, role);
     toast('success', `Login berhasil sebagai ${role}`);
-    if (role === 'VENDOR') {
+    if (role === 'AGEN') {
       router.push('/transactions/vendor-submissions');
     } else {
       router.push('/dashboard');
@@ -119,24 +119,24 @@ export default function LoginPage() {
               <div className="text-[10px] text-rose-600/70">Akses penuh CRUD</div>
             </button>
             <button
-              onClick={() => handleQuickLogin('SPV', 'spv')}
+              onClick={() => handleQuickLogin('SPV_OPS', 'spv_ops')}
               className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 text-left transition-colors"
             >
-              <div className="text-xs font-bold text-amber-700">SPV IT</div>
+              <div className="text-xs font-bold text-amber-700">SPV Ops</div>
               <div className="text-[10px] text-amber-600/70">Supervisi & Approval</div>
             </button>
             <button
-              onClick={() => handleQuickLogin('STAFF', 'staff')}
+              onClick={() => handleQuickLogin('LEADER_OPS', 'leader_ops')}
               className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100/70 text-left transition-colors"
             >
-              <div className="text-xs font-bold text-blue-700">Staff IT</div>
+              <div className="text-xs font-bold text-blue-700">Leader Ops</div>
               <div className="text-[10px] text-blue-600/70">Operasional Transaksi</div>
             </button>
             <button
-              onClick={() => handleQuickLogin('VENDOR', 'vendor')}
+              onClick={() => handleQuickLogin('AGEN', 'agen')}
               className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/70 text-left transition-colors"
             >
-              <div className="text-xs font-bold text-emerald-700">Vendor</div>
+              <div className="text-xs font-bold text-emerald-700">Agen</div>
               <div className="text-[10px] text-emerald-600/70">Pengajuan Vendor</div>
             </button>
           </div>

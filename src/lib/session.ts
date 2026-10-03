@@ -5,9 +5,14 @@ import { Role, Feature, Action, hasPermission } from './rbac';
 // In production, this should be replaced with real session/JWT validation
 const DEMO_USERS: { username: string; role: Role }[] = [
   { username: 'superadmin', role: 'SUPERADMIN' },
-  { username: 'spv', role: 'SPV' },
-  { username: 'staff', role: 'STAFF' },
-  { username: 'vendor', role: 'VENDOR' },
+  { username: 'manager_ops', role: 'MANAGER_OPS' },
+  { username: 'spv_ops', role: 'SPV_OPS' },
+  { username: 'leader_ops', role: 'LEADER_OPS' },
+  { username: 'agen', role: 'AGEN' },
+  { username: 'spv_qc', role: 'SPV_QC' },
+  { username: 'staff_qc', role: 'STAFF_QC' },
+  { username: 'spv_hr', role: 'SPV_HR' },
+  { username: 'staff_hr', role: 'STAFF_HR' },
 ];
 
 export interface AuthContext {

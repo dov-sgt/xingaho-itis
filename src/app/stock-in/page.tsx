@@ -136,7 +136,7 @@ export default function StockInPage() {
     return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3><p className="text-xs text-slate-500 mt-1">Role {role} tidak punya akses.</p></div>);
   }
 
-  const canCreate = ['SUPERADMIN', 'SPV'].includes(role);
+  const canCreate = ['SUPERADMIN', 'SPV_OPS'].includes(role);
 
   return (
     <div className="space-y-6">

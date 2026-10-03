@@ -16,7 +16,7 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [formData, setFormData] = useState({ username: '', name: '', password: '', role: 'STAFF' as Role, division: 'IT' });
+  const [formData, setFormData] = useState({ username: '', name: '', password: '', role: 'LEADER_OPS' as Role, division: 'IT' });
   const [errorMsg, setErrorMsg] = useState('');
 
   const fetchUsers = () => {
@@ -32,7 +32,7 @@ export default function UsersPage() {
     e.preventDefault(); setErrorMsg(''); setSaving(true);
     try {
       // SPV cannot create SPV or SuperAdmin
-      if (role === 'SPV' && ['SPV', 'SUPERADMIN'].includes(formData.role)) {
+      if ((role === 'SPV_OPS' || role === 'SPV_QC' || role === 'SPV_HR') && ['SPV_OPS', 'SPV_QC', 'SPV_HR', 'SUPERADMIN'].includes(formData.role)) {
         setErrorMsg('SPV tidak dapat membuat user SPV atau SuperAdmin');
         setSaving(false);
         return;
@@ -60,13 +60,13 @@ export default function UsersPage() {
 
   const roleColors: Record<string, string> = { SUPERADMIN: 'bg-rose-50 text-rose-700', MANAGER_OPS: 'bg-amber-50 text-amber-700', SPV_OPS: 'bg-amber-50 text-amber-700', LEADER_OPS: 'bg-blue-50 text-blue-700', AGEN: 'bg-emerald-50 text-emerald-700', SPV_QC: 'bg-purple-50 text-purple-700', STAFF_QC: 'bg-cyan-50 text-cyan-700', SPV_HR: 'bg-pink-50 text-pink-700', STAFF_HR: 'bg-orange-50 text-orange-700' };
 
-  const availableRoles: Role[] = role === 'SUPERADMIN' ? ['SUPERADMIN', 'MANAGER_OPS', 'SPV_OPS', 'LEADER_OPS', 'AGEN', 'SPV_QC', 'STAFF_QC', 'SPV_HR', 'STAFF_HR'] : role === 'SPV' ? ['STAFF', 'VENDOR'] : ['STAFF'];
+  const availableRoles: Role[] = role === 'SUPERADMIN' ? ['SUPERADMIN', 'MANAGER_OPS', 'SPV_OPS', 'LEADER_OPS', 'AGEN', 'SPV_QC', 'STAFF_QC', 'SPV_HR', 'STAFF_HR'] : role === 'SPV_OPS' ? ['LEADER_OPS', 'AGEN'] : role === 'SPV_QC' ? ['STAFF_QC'] : role === 'SPV_HR' ? ['STAFF_HR'] : ['LEADER_OPS'];
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-indigo-600" />User Management</h1>
-        {can('user_management', 'create') && <button onClick={() => { setEditingUser(null); setFormData({ username: '', name: '', password: '', role: 'STAFF', division: 'IT' }); setIsModalOpen(true); }} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Plus className="w-4 h-4" />Tambah</button>}
+        {can('user_management', 'create') && <button onClick={() => { setEditingUser(null); setFormData({ username: '', name: '', password: '', role: 'LEADER_OPS', division: 'IT' }); setIsModalOpen(true); }} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Plus className="w-4 h-4" />Tambah</button>}
       </div>
 
       <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">

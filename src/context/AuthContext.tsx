@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (username: string, forceRole?: Role) => {
     const found = DEMO_USERS.find((u) => u.username === username || (forceRole && u.role === forceRole)) || {
-      id: 99, username, name: username, role: forceRole || 'STAFF', division: 'IT',
+      id: 99, username, name: username, role: forceRole || 'LEADER_OPS', division: 'IT',
     };
     setUser(found);
     localStorage.setItem('itis_user', JSON.stringify(found));
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role: user ? user.role : 'STAFF', division: user?.division || null, login, switchRole, logout, can, canAccess, apiFetch }}>
+    <AuthContext.Provider value={{ user, role: user ? user.role : 'LEADER_OPS', division: user?.division || null, login, switchRole, logout, can, canAccess, apiFetch }}>
       {children}
     </AuthContext.Provider>
   );

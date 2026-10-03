@@ -54,7 +54,7 @@ export function validateEnum(value: any, fieldName: string, allowed: string[]): 
 }
 
 export function validateRole(value: any): string | null {
-  return validateEnum(value, 'Role', ['SUPERADMIN', 'SPV', 'STAFF', 'VENDOR']);
+  return validateEnum(value, 'Role', ['SUPERADMIN', 'MANAGER_OPS', 'SPV_OPS', 'LEADER_OPS', 'AGEN', 'SPV_QC', 'STAFF_QC', 'SPV_HR', 'STAFF_HR']);
 }
 
 export function validateStatus(value: any, fieldName: string, allowed: string[]): string | null {

@@ -105,7 +105,7 @@ export default function VendorSubmissionsPage() {
   }
 
   const canEdit = (sub: any) => {
-    if (role === 'VENDOR') return sub.status === 'Pending';
+    if (role === 'AGEN') return sub.status === 'Pending';
     return can('vendor_submission', 'update');
   };
 
