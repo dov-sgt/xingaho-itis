@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const authError = requirePermission(req, 'transaction_item', 'read');
   if (authError) return authError;
   try {
-    const bookings = await prisma.projectorBooking.findMany({ orderBy: { id: 'desc' } });
+    const bookings = await prisma.booking.findMany({ orderBy: { id: 'desc' } });
     return ok(bookings);
   } catch (error: any) { return serverError(error.message); }
 }
@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
     ]);
     if (errors.length > 0) return validationError(errors);
 
-    const count = await prisma.projectorBooking.count();
+    const count = await prisma.booking.count();
     const bookingCode = `PRJ-2026-${(count + 1).toString().padStart(4, '0')}`;
 
-    const booking = await prisma.projectorBooking.create({
+    const booking = await prisma.booking.create({
       data: { bookingCode, borrowerName, startDate, startTime: startTime || null, endDate, endTime: endTime || null, location, status: 'Pending', createdBy: createdBy || 'Staff IT' },
     });
     return ok(booking, 201);
@@ -60,7 +60,7 @@ export async function PUT(req: NextRequest) {
     if (endTime !== undefined) data.endTime = endTime || null;
     if (location) data.location = location;
 
-    const updated = await prisma.projectorBooking.update({ where: { id: Number(id) }, data });
+    const updated = await prisma.booking.update({ where: { id: Number(id) }, data });
     return ok(updated);
   } catch (error: any) { return serverError(error.message); }
 }
@@ -72,7 +72,7 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return badRequest('ID is required');
-    await prisma.projectorBooking.delete({ where: { id: Number(id) } });
+    await prisma.booking.delete({ where: { id: Number(id) } });
     return ok({ success: true });
   } catch (error: any) { return serverError(error.message); }
 }
