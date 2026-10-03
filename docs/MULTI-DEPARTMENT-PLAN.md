@@ -23,7 +23,7 @@ Satu sistem bersama untuk 4 department (IT, QC, Ops, HR) dengan:
 │ Master Item │ QC Check    │ Ops Task    │ Employee Data   │
 │ Inventory   │ QC Report   │ Ops Schedule│ Leave Request   │
 │ Headset     │ Defect Log  │ Fleet Mgmt  │ Payroll         │
-│ PR/DO       │             │             │                 │
+│ PR/DO       │             │ Kelola Nasabah            │ Recruitment                │
 │ Booking     │             │             │                 │
 │ Servis      │             │             │                 │
 └─────────────┴─────────────┴─────────────┴─────────────────┘

@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { nik, name, department, position, joinDate, phone, email } = body;
     const errors = collectErrors([
-      validateRequired(nik, 'NIK'), validateRequired(nama, 'Nama'),
+      validateRequired(nik, 'NIK'), validateRequired(name, 'Nama'),
       validateRequired(department, 'Department'), validateRequired(position, 'Position'),
     ]);
     if (errors.length > 0) return validationError(errors);
