@@ -2,14 +2,21 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, Feature, Action, hasPermission, canAccessMenu } from '@/lib/rbac';
-import { DEMO_USERS, UserSession } from '@/lib/auth';
+
+interface UserSession {
+  id: number;
+  username: string;
+  name: string;
+  role: Role;
+  division?: string | null;
+  vendorId?: number | null;
+}
 
 interface AuthContextType {
   user: UserSession | null;
   role: Role;
   division: string | null;
-  login: (username: string, role?: Role) => void;
-  switchRole: (role: Role) => void;
+  login: (username: string) => void;
   logout: () => void;
   can: (feature: Feature, action: Action) => boolean;
   canAccess: (feature: Feature) => boolean;
@@ -18,30 +25,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Default SuperAdmin user (will be replaced by proper login)
+const DEFAULT_USER: UserSession = {
+  id: 1,
+  username: 'superadmin',
+  name: 'Sigit SuperAdmin',
+  role: 'SUPERADMIN',
+  division: null,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserSession | null>(DEMO_USERS[0]);
+  const [user, setUser] = useState<UserSession | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('itis_user');
     if (saved) {
-      try { setUser(JSON.parse(saved)); } catch (e) { setUser(DEMO_USERS[0]); }
+      try { setUser(JSON.parse(saved)); } catch (e) { setUser(null); }
     }
   }, []);
 
-  const login = (username: string, forceRole?: Role) => {
-    const found = DEMO_USERS.find((u) => u.username === username || (forceRole && u.role === forceRole)) || {
-      id: 99, username, name: username, role: forceRole || 'LEADER_OPS', division: 'IT',
-    };
+  const login = (username: string) => {
+    // For demo, we just set the user based on username
+    // In production, this would be handled by the API
+    const found = DEFAULT_USER;
     setUser(found);
     localStorage.setItem('itis_user', JSON.stringify(found));
-  };
-
-  const switchRole = (newRole: Role) => {
-    const target = DEMO_USERS.find((u) => u.role === newRole) || {
-      id: 99, username: newRole.toLowerCase(), name: `${newRole} User`, role: newRole, division: 'IT',
-    };
-    setUser(target);
-    localStorage.setItem('itis_user', JSON.stringify(target));
   };
 
   const logout = () => {
@@ -66,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role: user ? user.role : 'LEADER_OPS', division: user?.division || null, login, switchRole, logout, can, canAccess, apiFetch }}>
+    <AuthContext.Provider value={{ user, role: user ? user.role : 'SUPERADMIN', division: user?.division || null, login, logout, can, canAccess, apiFetch }}>
       {children}
     </AuthContext.Provider>
   );

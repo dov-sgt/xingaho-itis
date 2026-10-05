@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -14,6 +14,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Redirect to login if not logged in (except on login page)
   if (!user && pathname !== '/login') {
     router.push('/login');
+    return null;
+  }
+
+  // Redirect to dashboard if already logged in and on login page
+  if (user && pathname === '/login') {
+    router.push('/dashboard');
     return null;
   }
 

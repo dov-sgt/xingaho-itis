@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { Role } from '@/lib/rbac';
 import { Server, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
@@ -16,31 +15,35 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username) {
-      setError('Masukkan username');
+    if (!username || !password) {
+      setError('Username dan password wajib diisi');
       return;
     }
 
     setLoading(true);
-    // Simulate login (demo mode - no real auth)
-    setTimeout(() => {
-      login(username);
-      toast('success', `Login berhasil sebagai ${username}`);
-      router.push('/dashboard');
-      setLoading(false);
-    }, 500);
-  };
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
 
-  const handleQuickLogin = (role: Role, user: string) => {
-    login(user, role);
-    toast('success', `Login berhasil sebagai ${role}`);
-    if (role === 'AGEN') {
-      router.push('/transactions/vendor-submissions');
-    } else {
+      const result = await res.json();
+      if (!res.ok) {
+        setError(result.error || 'Login gagal');
+        setLoading(false);
+        return;
+      }
+
+      login(result.username);
+      toast('success', `Login berhasil sebagai ${result.name}`);
       router.push('/dashboard');
+    } catch (err) {
+      setError('Terjadi kesalahan. Coba lagi.');
     }
+    setLoading(false);
   };
 
   return (
@@ -73,7 +76,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="superadmin / spv / staff / vendor"
+                placeholder="Masukkan username"
                 className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
               />
             </div>
@@ -89,7 +92,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Masukkan password"
                 className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
               />
             </div>
@@ -105,41 +108,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-            Quick Demo Login (Pilih Role):
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleQuickLogin('SUPERADMIN', 'superadmin')}
-              className="p-2.5 rounded-lg border border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 text-left transition-colors"
-            >
-              <div className="text-xs font-bold text-rose-700">SuperAdmin</div>
-              <div className="text-[10px] text-rose-600/70">Akses penuh CRUD</div>
-            </button>
-            <button
-              onClick={() => handleQuickLogin('SPV_OPS', 'spv_ops')}
-              className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 text-left transition-colors"
-            >
-              <div className="text-xs font-bold text-amber-700">SPV Ops</div>
-              <div className="text-[10px] text-amber-600/70">Supervisi & Approval</div>
-            </button>
-            <button
-              onClick={() => handleQuickLogin('LEADER_OPS', 'leader_ops')}
-              className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100/70 text-left transition-colors"
-            >
-              <div className="text-xs font-bold text-blue-700">Leader Ops</div>
-              <div className="text-[10px] text-blue-600/70">Operasional Transaksi</div>
-            </button>
-            <button
-              onClick={() => handleQuickLogin('AGEN', 'agen')}
-              className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/70 text-left transition-colors"
-            >
-              <div className="text-xs font-bold text-emerald-700">Agen</div>
-              <div className="text-[10px] text-emerald-600/70">Pengajuan Vendor</div>
-            </button>
-          </div>
+        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <p className="text-[10px] text-slate-400">
+            Hubungi SuperAdmin jika belum memiliki akun
+          </p>
         </div>
       </div>
     </div>
