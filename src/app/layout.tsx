@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 import AppLayout from '@/components/AppLayout';
 import { ToastProvider } from '@/components/Toast';
+import { AppProvider } from '@/context/AppContext';
 
 export const metadata: Metadata = {
-  title: 'Xinghao IT Information System (ITIS)',
-  description: 'Sistem Informasi Operasional IT Staff Xinghao',
+  title: 'Xinghao ITIS',
+  description: 'IT Information System',
 };
 
 export default function RootLayout({
@@ -14,11 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        <ToastProvider>
-          <AppLayout>{children}</AppLayout>
-        </ToastProvider>
+        <AppProvider>
+          <ToastProvider>
+            <AppLayout>{children}</AppLayout>
+          </ToastProvider>
+        </AppProvider>
       </body>
     </html>
   );
