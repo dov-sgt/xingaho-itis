@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Feature, canAccessMenu } from '@/lib/rbac';
+import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Boxes, Building2, PackageSearch, Headphones, ShoppingCart,
-  Truck, FileText, Users, BarChart3, Server, ShieldCheck, PackageOpen,
+  Truck, FileText, Users, BarChart3, Server, PackageOpen,
   PackagePlus, Wrench, DoorOpen, Calendar, AlertTriangle, ClipboardCheck,
   CreditCard, Briefcase, CalendarOff, ChevronDown, ChevronRight,
 } from 'lucide-react';
@@ -75,47 +76,30 @@ export default function Sidebar() {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const roleColors: Record<string, string> = {
-    SUPERADMIN: 'bg-rose-500/10 text-rose-600 border-rose-200',
-    MANAGER_OPS: 'bg-amber-500/10 text-amber-600 border-amber-200',
-    SPV_OPS: 'bg-amber-500/10 text-amber-600 border-amber-200',
-    LEADER_OPS: 'bg-blue-500/10 text-blue-600 border-blue-200',
-    AGEN: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
-    SPV_QC: 'bg-purple-500/10 text-purple-600 border-purple-200',
-    STAFF_QC: 'bg-cyan-500/10 text-cyan-600 border-cyan-200',
-    SPV_HR: 'bg-pink-500/10 text-pink-600 border-pink-200',
-    STAFF_HR: 'bg-orange-500/10 text-orange-600 border-orange-200',
-  };
-
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-800">
-      <div className="h-16 px-6 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/30">
-            <Server className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="font-bold text-base tracking-wide text-white leading-tight">XINGHAO ITIS</h1>
-            <p className="text-[11px] text-slate-400 font-medium">IT Information System</p>
-          </div>
+    <aside className="w-60 bg-sidebar text-sidebar-foreground flex flex-col flex-shrink-0 min-h-screen border-r border-sidebar-border">
+      <div className="h-14 px-4 flex items-center gap-3 border-b border-sidebar-border">
+        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
+          <Server className="h-4 w-4 text-sidebar-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="font-bold text-sm tracking-wide">XINGHAO ITIS</h1>
+          <p className="text-[10px] text-sidebar-foreground/60">IT Information System</p>
         </div>
       </div>
 
-      <div className="px-6 py-3 border-b border-slate-800/60 bg-slate-950/40">
+      <div className="px-4 py-2 border-b border-sidebar-border bg-sidebar/50">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-400 flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            {role}
-          </span>
+          <span className="text-xs text-sidebar-foreground/60">{role}</span>
           {user?.division && (
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${roleColors[role] || 'bg-slate-800 text-slate-300'}`}>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sidebar-primary/10 text-sidebar-primary">
               {user.division}
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 px-3">
+      <div className="flex-1 overflow-y-auto py-3 px-2">
         {DIVISION_SECTIONS.map((section) => {
           if (role !== 'SUPERADMIN' && user?.division !== section.key) return null;
 
@@ -128,22 +112,29 @@ export default function Sidebar() {
             <div key={section.key} className="mb-2">
               <button
                 onClick={() => toggleExpand(section.key)}
-                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground transition-colors"
               >
                 <span>{section.label}</span>
-                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               </button>
               {isExpanded && (
-                <div className="space-y-1 mt-1">
+                <div className="space-y-0.5 mt-1">
                   {visibleMenus.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
                     return (
-                      <Link key={item.path} href={item.path} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-                        <div className="flex items-center space-x-3">
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                          <span>{item.title}</span>
-                        </div>
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors",
+                          isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.title}</span>
                       </Link>
                     );
                   })}
@@ -154,9 +145,8 @@ export default function Sidebar() {
         })}
       </div>
 
-      <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 bg-slate-950/50">
-        <div className="text-slate-300 font-semibold">Xinghao IT Division</div>
-        <div className="text-[10px]">Ubuntu Server /var/www/xinghao/itis</div>
+      <div className="p-3 border-t border-sidebar-border text-[10px] text-sidebar-foreground/40">
+        <div className="font-semibold text-sidebar-foreground/60">Xinghao IT Division</div>
       </div>
     </aside>
   );

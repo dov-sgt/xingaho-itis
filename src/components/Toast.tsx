@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 
 interface Toast {
@@ -33,15 +34,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   };
 
   const icons = {
-    success: <CheckCircle className="w-4 h-4 text-emerald-500" />,
-    error: <XCircle className="w-4 h-4 text-rose-500" />,
-    warning: <AlertTriangle className="w-4 h-4 text-amber-500" />,
-  };
-
-  const bgColors = {
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-    error: 'bg-rose-50 border-rose-200 text-rose-800',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800',
+    success: <CheckCircle className="h-4 w-4 text-emerald-500" />,
+    error: <XCircle className="h-4 w-4 text-destructive" />,
+    warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
   };
 
   return (
@@ -51,15 +46,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl border shadow-lg text-xs font-medium animate-slide-in ${bgColors[t.type]}`}
+            className={cn(
+              "flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg text-xs font-medium animate-slide-in bg-background",
+              t.type === 'success' && 'border-emerald-200 text-emerald-800',
+              t.type === 'error' && 'border-destructive/20 text-destructive',
+              t.type === 'warning' && 'border-amber-200 text-amber-800'
+            )}
           >
             {icons[t.type]}
             <span className="flex-1">{t.message}</span>
-            <button
-              onClick={() => removeToast(t.id)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
+            <button onClick={() => removeToast(t.id)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}

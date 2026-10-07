@@ -6,6 +6,8 @@ import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/Toast';
 import { LogOut, ShieldCheck, Sun, Moon, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
@@ -21,65 +23,42 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-14 bg-background border-b border-border px-4 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
-        <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+        <h1 className="text-sm font-semibold text-foreground">
           Xinghao ITIS
         </h1>
-        <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+        <span className="text-xs text-muted-foreground hidden sm:inline">
           {role === 'SUPERADMIN' ? 'All Divisions' : `${user?.division || 'IT'} Division`}
         </span>
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Language Toggle */}
-        <button
-          onClick={toggleLang}
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title={lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'}
-        >
-          <Globe className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-        </button>
+        <Button variant="ghost" size="icon" onClick={toggleLang} title={lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'}>
+          <Globe className="h-4 w-4" />
+        </Button>
 
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title={theme === 'light' ? 'Dark mode' : 'Light mode'}
-        >
-          {theme === 'light' ? (
-            <Moon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          ) : (
-            <Sun className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          )}
-        </button>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>
+          {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        </Button>
 
-        {/* Role Badge */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 border border-slate-200 dark:border-slate-700">
-          <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 mr-1.5" />
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            {role}
-          </span>
+        <div className="flex items-center bg-secondary rounded-lg px-2 py-1">
+          <ShieldCheck className="h-3.5 w-3.5 text-primary mr-1.5" />
+          <span className="text-xs font-medium text-secondary-foreground">{role}</span>
         </div>
 
-        {/* User */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-          <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs">
-            {user?.name?.charAt(0) || 'U'}
-          </div>
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 hidden sm:inline">
-            {user?.name || 'User'}
-          </span>
+        <div className="flex items-center gap-2 pl-2 border-l border-border">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              {user?.name?.charAt(0) || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium text-foreground hidden sm:inline">{user?.name || 'User'}</span>
         </div>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          title="Keluar"
-          className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-        >
-          <LogOut className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-        </button>
+        <Button variant="ghost" size="icon" onClick={handleLogout} title="Keluar">
+          <LogOut className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );
