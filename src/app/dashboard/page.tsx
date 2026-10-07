@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { t } from '@/lib/i18n';
 
 const DIVISIONS = [
   { key: 'IT', label: 'IT', color: 'indigo', icon: Boxes },
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const kpis = data?.kpis || {};
   const stocks = data?.stocks || [];
   const categoryCounts = data?.categoryCounts || {};
+  const recentTransactions = data?.recentTransactions || [];
 
   if (role === 'SUPERADMIN') {
     return (
@@ -111,14 +113,16 @@ export default function DashboardPage() {
                   <p className="text-2xl font-bold text-amber-600">{kpis.activeLoans || 0}</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-destructive">{kpis.pendingSubmissions || 0}</p>
-                </CardContent>
-              </Card>
+              <Link href="/transactions/vendor-submissions">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-destructive">{kpis.pendingSubmissions || 0}</p>
+                  </CardContent>
+                </Card>
+              </Link>
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs font-medium text-muted-foreground">Purchase Request</CardTitle>
@@ -132,25 +136,21 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="lg:col-span-1">
                 <CardHeader>
-                  <CardTitle className="text-sm">Kategori Item</CardTitle>
+                  <CardTitle className="text-sm">Transaksi Item Terkini</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
-                      const total = kpis.totalMasterItems || 1;
-                      const pct = Math.round((count / total) * 100);
-                      return (
-                        <div key={cat}>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-muted-foreground">{cat}</span>
-                            <span className="text-muted-foreground">{count} ({pct}%)</span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-1.5">
-                            <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
-                          </div>
+                    {recentTransactions.slice(0, 5).map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-medium text-foreground">{tx.name}</p>
+                          <p className="text-muted-foreground">{tx.date} • {tx.project}</p>
                         </div>
-                      );
-                    })}
+                        <Badge variant={tx.status === 'Used' ? 'secondary' : tx.status === 'Return' ? 'default' : 'destructive'}>
+                          {tx.status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

@@ -8,6 +8,7 @@ import { LogOut, ShieldCheck, Sun, Moon, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { t } from '@/lib/i18n';
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
@@ -36,6 +37,7 @@ export default function Navbar() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={toggleLang} title={lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'}>
           <Globe className="h-4 w-4" />
+          <span className="ml-1 text-xs font-medium">{lang.toUpperCase()}</span>
         </Button>
 
         <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>
