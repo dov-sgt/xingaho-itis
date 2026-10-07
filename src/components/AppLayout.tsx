@@ -1,31 +1,30 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!user && pathname !== '/login') {
-      router.push('/login');
-    }
-    if (user && pathname === '/login') {
-      router.push('/dashboard');
-    }
-  }, [user, pathname, router]);
-
+  // Redirect logic without useEffect to avoid hooks order issues
   if (!user && pathname !== '/login') {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (user && pathname === '/login') {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (pathname === '/login') {
