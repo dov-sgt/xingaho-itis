@@ -27,10 +27,10 @@ export default function Navbar() {
     <header className="h-14 bg-background border-b border-border px-4 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <h1 className="text-sm font-semibold text-foreground">
-          Xinghao ITIS
+          {t(lang, 'dashboard')}
         </h1>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          {role === 'SUPERADMIN' ? 'All Divisions' : `${user?.division || 'IT'} Division`}
+          {role === 'SUPERADMIN' ? t(lang, 'all') : `${user?.division || 'IT'} ${t(lang, 'division')}`}
         </span>
       </div>
 
@@ -40,7 +40,7 @@ export default function Navbar() {
           <span className="ml-1 text-xs font-medium">{lang.toUpperCase()}</span>
         </Button>
 
-        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? t(lang, 'dark') : t(lang, 'light')}>
           {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
 
@@ -58,7 +58,7 @@ export default function Navbar() {
           <span className="text-xs font-medium text-foreground hidden sm:inline">{user?.name || 'User'}</span>
         </div>
 
-        <Button variant="ghost" size="icon" onClick={handleLogout} title="Keluar">
+        <Button variant="ghost" size="icon" onClick={handleLogout} title={t(lang, 'logout')}>
           <LogOut className="h-4 w-4" />
         </Button>
       </div>

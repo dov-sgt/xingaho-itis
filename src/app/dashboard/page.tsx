@@ -123,14 +123,16 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               </Link>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">Purchase Request</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-primary">{kpis.totalPR || 0}</p>
-                </CardContent>
-              </Card>
+              <Link href="/transactions/purchase-requests">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground">Purchase Request Pending</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-primary">{kpis.pendingPR || 0}</p>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
