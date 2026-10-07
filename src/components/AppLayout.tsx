@@ -11,13 +11,20 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const router = useRouter();
 
+  useEffect(() => {
+    if (!user && pathname !== '/login') {
+      router.push('/login');
+    }
+    if (user && pathname === '/login') {
+      router.push('/dashboard');
+    }
+  }, [user, pathname, router]);
+
   if (!user && pathname !== '/login') {
-    router.push('/login');
     return null;
   }
 
   if (user && pathname === '/login') {
-    router.push('/dashboard');
     return null;
   }
 

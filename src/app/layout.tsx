@@ -3,10 +3,6 @@ import './globals.css';
 import AppLayout from '@/components/AppLayout';
 import { ToastProvider } from '@/components/Toast';
 import { AppProvider } from '@/context/AppContext';
-import { IBM_Plex_Sans } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const ibmPlexSans = IBM_Plex_Sans({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: 'Xinghao ITIS',
@@ -19,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" suppressHydrationWarning className={cn("font-sans", ibmPlexSans.variable)}>
+    <html lang="id" suppressHydrationWarning>
       <body className="antialiased font-sans">
         <AppProvider>
           <ToastProvider>

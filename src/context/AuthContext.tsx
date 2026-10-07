@@ -25,7 +25,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Default SuperAdmin user (will be replaced by proper login)
 const DEFAULT_USER: UserSession = {
   id: 1,
   username: 'superadmin',
@@ -45,11 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (username: string) => {
-    // For demo, we just set the user based on username
-    // In production, this would be handled by the API
-    const found = DEFAULT_USER;
-    setUser(found);
-    localStorage.setItem('itis_user', JSON.stringify(found));
+    setUser(DEFAULT_USER);
+    localStorage.setItem('itis_user', JSON.stringify(DEFAULT_USER));
   };
 
   const logout = () => {
@@ -82,6 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }
