@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -12,19 +12,18 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { theme } = useApp();
 
-  // Apply dark mode class
-  if (theme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
-  // Show login page
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
-  // Show loading if no user
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
