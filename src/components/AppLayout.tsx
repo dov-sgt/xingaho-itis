@@ -4,31 +4,33 @@ import React from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { useApp } from '@/context/AppContext';
 import { usePathname } from 'next/navigation';
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { theme } = useApp();
 
-  // Redirect logic without useEffect to avoid hooks order issues
-  if (!user && pathname !== '/login') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+  // Apply dark mode class
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
   }
 
-  if (user && pathname === '/login') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
+  // Show login page
   if (pathname === '/login') {
     return <>{children}</>;
+  }
+
+  // Show loading if no user
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
