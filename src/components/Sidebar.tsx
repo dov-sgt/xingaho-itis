@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Boxes, Building2, PackageSearch, Headphones, ShoppingCart,
   Truck, FileText, Users, BarChart3, Server, PackageOpen,
-  PackagePlus, Wrench, DoorOpen, Calendar, AlertTriangle, ClipboardCheck,
-  CreditCard, Briefcase, CalendarOff, ChevronDown, ChevronRight,
+  PackagePlus, Calendar, AlertTriangle, ClipboardCheck, CreditCard, Briefcase, CalendarOff, Wrench, ShieldCheck,
+  ChevronDown, ChevronRight, Settings,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -30,7 +30,6 @@ const IT_MENUS: MenuItem[] = [
   { title: 'Stock Out', path: '/stock-out-transactions', feature: 'transaction_item', icon: PackageOpen },
   { title: 'Booking Asset', path: '/bookings', feature: 'transaction_item', icon: Calendar },
   { title: 'Servis Asset', path: '/servis-assets', feature: 'transaction_item', icon: Wrench },
-  { title: 'Log Ruang Server', path: '/log-ruang-server', feature: 'transaction_item', icon: DoorOpen },
   { title: 'Purchase Request', path: '/transactions/purchase-requests', feature: 'purchase_request', icon: ShoppingCart },
   { title: 'Delivery Order', path: '/transactions/delivery-orders', feature: 'delivery_order', icon: Truck },
   { title: 'Pengajuan Vendor', path: '/transactions/vendor-submissions', feature: 'vendor_submission', icon: FileText },
@@ -60,6 +59,12 @@ const HR_MENUS: MenuItem[] = [
   { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
 ];
 
+const SUPERADMIN_MENUS: MenuItem[] = [
+  { title: 'User Management', path: '/users', feature: 'user_management', icon: Users },
+  { title: 'Role Management', path: '/roles', feature: 'user_management', icon: ShieldCheck },
+  { title: 'Division Management', path: '/divisions', feature: 'user_management', icon: Building2 },
+];
+
 const DIVISION_SECTIONS = [
   { key: 'IT', label: 'IT Division', menus: IT_MENUS },
   { key: 'OPS', label: 'Ops Division', menus: OPS_MENUS },
@@ -70,7 +75,8 @@ const DIVISION_SECTIONS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { canAccess, role, user } = useAuth();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ IT: true, OPS: true, QC: true, HR: true });
+  // All collapsed by default
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -100,28 +106,65 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-3 px-2">
-        {DIVISION_SECTIONS.map((section) => {
-          if (role !== 'SUPERADMIN' && user?.division !== section.key) return null;
+        {/* SuperAdmin sees all divisions + admin menu */}
+        {role === 'SUPERADMIN' ? (
+          <>
+            {DIVISION_SECTIONS.map((section) => {
+              const visibleMenus = section.menus.filter((item) => canAccessMenu(role, item.feature));
+              if (visibleMenus.length === 0) return null;
 
-          const visibleMenus = section.menus.filter((item) => canAccessMenu(role, item.feature));
-          if (visibleMenus.length === 0) return null;
+              const isExpanded = expanded[section.key] ?? false;
 
-          const isExpanded = expanded[section.key];
+              return (
+                <div key={section.key} className="mb-2">
+                  <button
+                    onClick={() => toggleExpand(section.key)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground transition-colors"
+                  >
+                    <span>{section.label}</span>
+                    {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-0.5 mt-1">
+                      {visibleMenus.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                        return (
+                          <Link
+                            key={item.path}
+                            href={item.path}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors",
+                              isActive
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-          return (
-            <div key={section.key} className="mb-2">
+            {/* SuperAdmin sub-menu */}
+            <div className="mb-2">
               <button
-                onClick={() => toggleExpand(section.key)}
+                onClick={() => toggleExpand('SUPERADMIN')}
                 className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground transition-colors"
               >
-                <span>{section.label}</span>
-                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                <span>Admin Settings</span>
+                {expanded['SUPERADMIN'] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               </button>
-              {isExpanded && (
+              {expanded['SUPERADMIN'] && (
                 <div className="space-y-0.5 mt-1">
-                  {visibleMenus.map((item) => {
+                  {SUPERADMIN_MENUS.map((item) => {
                     const Icon = item.icon;
-                    const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                    const isActive = pathname === item.path;
                     return (
                       <Link
                         key={item.path}
@@ -141,8 +184,55 @@ export default function Sidebar() {
                 </div>
               )}
             </div>
-          );
-        })}
+          </>
+        ) : (
+          <>
+            {/* Regular users see only their division menu */}
+            {DIVISION_SECTIONS.map((section) => {
+              if (user?.division !== section.key) return null;
+
+              const visibleMenus = section.menus.filter((item) => canAccessMenu(role, item.feature));
+              if (visibleMenus.length === 0) return null;
+
+              const isExpanded = expanded[section.key] ?? false;
+
+              return (
+                <div key={section.key} className="mb-2">
+                  <button
+                    onClick={() => toggleExpand(section.key)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground transition-colors"
+                  >
+                    <span>{section.label}</span>
+                    {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-0.5 mt-1">
+                      {visibleMenus.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                        return (
+                          <Link
+                            key={item.path}
+                            href={item.path}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors",
+                              isActive
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       <div className="p-3 border-t border-sidebar-border text-[10px] text-sidebar-foreground/40">

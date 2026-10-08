@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
-import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, validateNumber, collectErrors } from '@/lib/validation';
+import { ok, badRequest, serverError } from '@/lib/api';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'read');
-  if (authError) return authError;
   try {
     const { searchParams } = new URL(req.url);
     const agenName = searchParams.get('agenName') || '';
@@ -26,37 +22,23 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'create');
-  if (authError) return authError;
   try {
     const body = await req.json();
-    const { agenName, nasabahId, nasabahName, amount, paymentMethod } = body;
-    const errors = collectErrors([
-      validateRequired(agenName, 'Nama Agen'),
-      validateRequired(nasabahName, 'Nama Nasabah'),
-      validateNumber(amount, 'Jumlah', 1),
-    ]);
-    if (errors.length > 0) return validationError(errors);
-
+    const { agenName, date, amount } = body;
+    if (!agenName || !amount) return badRequest('Nama agen dan jumlah wajib diisi');
     const achievement = await prisma.paymentAchievement.create({
-      data: { agenName, nasabahId: nasabahId ? Number(nasabahId) : null, nasabahName, amount: parseFloat(amount) || 0, paymentMethod: paymentMethod || null },
+      data: { agenName, date: date ? new Date(date) : new Date(), amount: parseFloat(amount) || 0 },
     });
     return ok(achievement, 201);
   } catch (error: any) { return serverError(error.message); }
 }
 
 export async function PUT(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'update');
-  if (authError) return authError;
   try {
     const body = await req.json();
-    const { id, status, notedBy } = body;
+    const { id, status } = body;
     if (!id) return badRequest('ID is required');
-    if (status && !['Pending', 'Confirmed', 'Rejected'].includes(status)) return badRequest('Status tidak valid');
-    const data: any = {};
-    if (status) data.status = status;
-    if (notedBy) data.notedBy = notedBy;
-    const updated = await prisma.paymentAchievement.update({ where: { id: Number(id) }, data });
+    const updated = await prisma.paymentAchievement.update({ where: { id: Number(id) }, data: { status } });
     return ok(updated);
   } catch (error: any) { return serverError(error.message); }
 }

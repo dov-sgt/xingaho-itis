@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, collectErrors } from '@/lib/validation';
+import { validateRequired, collectErrors } from '@/lib/validation';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -19,14 +19,12 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
   try {
     const body = await req.json();
-    const { date, nama, jamMasuk, jamKeluar, keperluan } = body;
+    const { date, nama, jamMasuk, jamKeluar, keperluan, location } = body;
     const errors = collectErrors([
       validateRequired(date, 'Tanggal'),
       validateRequired(nama, 'Nama'),
-      validateString(nama, 'Nama', 1, 255),
       validateRequired(jamMasuk, 'Jam Masuk'),
       validateRequired(keperluan, 'Keperluan'),
-      validateString(keperluan, 'Keperluan', 1, 500),
     ]);
     if (errors.length > 0) return validationError(errors);
 
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest) {
     const logCode = `LOG-2026-${(count + 1).toString().padStart(4, '0')}`;
 
     const log = await prisma.logRuangServer.create({
-      data: { logCode, date: new Date(date), nama, jamMasuk, jamKeluar: jamKeluar || null, keperluan },
+      data: { logCode, date: new Date(date), nama, jamMasuk, jamKeluar: jamKeluar || null, keperluan, location: location || null },
     });
     return ok(log, 201);
   } catch (error: any) { return serverError(error.message); }
@@ -45,7 +43,7 @@ export async function PUT(req: NextRequest) {
   if (authError) return authError;
   try {
     const body = await req.json();
-    const { id, date, nama, jamMasuk, jamKeluar, keperluan } = body;
+    const { id, date, nama, jamMasuk, jamKeluar, keperluan, location } = body;
     if (!id) return badRequest('ID is required');
 
     const data: any = {};
@@ -54,6 +52,7 @@ export async function PUT(req: NextRequest) {
     if (jamMasuk) data.jamMasuk = jamMasuk;
     if (jamKeluar !== undefined) data.jamKeluar = jamKeluar || null;
     if (keperluan) data.keperluan = keperluan;
+    if (location !== undefined) data.location = location || null;
 
     const updated = await prisma.logRuangServer.update({ where: { id: Number(id) }, data });
     return ok(updated);

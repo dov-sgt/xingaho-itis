@@ -11,7 +11,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: {
+        role: true,
+        division: true,
+      },
+    });
+
     if (!user) {
       return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
     }
@@ -25,8 +32,8 @@ export async function POST(request: Request) {
       id: user.id,
       username: user.username,
       name: user.name,
-      role: user.role,
-      division: user.division,
+      role: user.role.code,
+      division: user.division.name,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

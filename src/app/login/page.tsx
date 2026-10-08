@@ -54,8 +54,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="w-12 h-12 bg-primary rounded-xl mx-auto flex items-center justify-center mb-4">
-            <Server className="h-6 w-6 text-primary-foreground" />
+          <div className="flex justify-center mb-4">
+            <img src="/pict/xh_logo_1.png" alt="Xinghao Logo" className="h-16 w-auto" />
           </div>
           <CardTitle className="text-2xl">XINGHAO ITIS</CardTitle>
           <CardDescription>IT Information System Staff & Operasional</CardDescription>

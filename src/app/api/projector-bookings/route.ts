@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
-import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, collectErrors } from '@/lib/validation';
+import { ok, badRequest, serverError } from '@/lib/api';
 import { NextRequest } from 'next/server';
 
-const VALID_STATUSES = ['Pending', 'Ongoing', 'Done'];
-
 export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'read');
-  if (authError) return authError;
   try {
     const bookings = await prisma.booking.findMany({ orderBy: { id: 'desc' } });
     return ok(bookings);
@@ -17,57 +11,30 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'create');
-  if (authError) return authError;
   try {
     const body = await req.json();
-    const { borrowerName, itemType, startDate, startTime, endDate, endTime, location, createdBy } = body;
-    const errors = collectErrors([
-      validateRequired(borrowerName, 'Nama Peminjam'),
-      validateString(borrowerName, 'Nama Peminjam', 1, 255),
-      validateRequired(startDate, 'Tanggal Mulai'),
-      validateRequired(endDate, 'Tanggal Selesai'),
-      validateRequired(location, 'Lokasi'),
-      validateString(location, 'Lokasi', 1, 255),
-    ]);
-    if (errors.length > 0) return validationError(errors);
-
+    const { borrowerName, startDate, startTime, endDate, endTime, location } = body;
+    if (!borrowerName || !startDate) return badRequest('Nama peminjam dan tanggal mulai wajib diisi');
     const count = await prisma.booking.count();
-    const bookingCode = `PRJ-2026-${(count + 1).toString().padStart(4, '0')}`;
-
+    const bookingCode = `BKG-2026-${(count + 1).toString().padStart(4, '0')}`;
     const booking = await prisma.booking.create({
-      data: { bookingCode, borrowerName, itemType: itemType || 'Projector', startDate, startTime: startTime || null, endDate, endTime: endTime || null, location, status: 'Pending', createdBy: createdBy || 'Staff IT' },
+      data: { bookingCode, borrowerName, itemType: 'Projector', startDate, startTime: startTime || null, endDate: endDate || null, endTime: endTime || null, location: location || null, status: 'Pending' },
     });
     return ok(booking, 201);
   } catch (error: any) { return serverError(error.message); }
 }
 
 export async function PUT(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'update');
-  if (authError) return authError;
   try {
     const body = await req.json();
-    const { id, status, borrowerName, startDate, startTime, endDate, endTime, location } = body;
+    const { id, status } = body;
     if (!id) return badRequest('ID is required');
-    if (status && !VALID_STATUSES.includes(status)) return badRequest(`Status tidak valid. Valid: ${VALID_STATUSES.join(', ')}`);
-
-    const data: any = {};
-    if (status) data.status = status;
-    if (borrowerName) data.borrowerName = borrowerName;
-    if (startDate) data.startDate = startDate;
-    if (startTime !== undefined) data.startTime = startTime || null;
-    if (endDate) data.endDate = endDate;
-    if (endTime !== undefined) data.endTime = endTime || null;
-    if (location) data.location = location;
-
-    const updated = await prisma.booking.update({ where: { id: Number(id) }, data });
+    const updated = await prisma.booking.update({ where: { id: Number(id) }, data: { status } });
     return ok(updated);
   } catch (error: any) { return serverError(error.message); }
 }
 
 export async function DELETE(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'delete');
-  if (authError) return authError;
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

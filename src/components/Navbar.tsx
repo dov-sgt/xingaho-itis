@@ -3,34 +3,31 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
-import { useToast } from '@/components/Toast';
 import { LogOut, ShieldCheck, Sun, Moon, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { t } from '@/lib/i18n';
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
   const { theme, toggleTheme, lang, toggleLang } = useApp();
-  const { toast } = useToast();
   const router = useRouter();
 
   const handleLogout = () => {
     if (!confirm('Apakah Anda yakin ingin keluar?')) return;
     logout();
-    toast('success', 'Anda telah keluar dari sistem');
     router.push('/login');
   };
 
   return (
     <header className="h-14 bg-background border-b border-border px-4 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
+        <img src="/pict/xh_logo_1.png" alt="Xinghao Logo" className="h-8 w-auto" />
         <h1 className="text-sm font-semibold text-foreground">
-          {t(lang, 'dashboard')}
+          Xinghao ITIS
         </h1>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          {role === 'SUPERADMIN' ? t(lang, 'all') : `${user?.division || 'IT'} ${t(lang, 'division')}`}
+          {role === 'SUPERADMIN' ? 'All Divisions' : `${user?.division || 'IT'} Division`}
         </span>
       </div>
 
@@ -40,7 +37,7 @@ export default function Navbar() {
           <span className="ml-1 text-xs font-medium">{lang.toUpperCase()}</span>
         </Button>
 
-        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? t(lang, 'dark') : t(lang, 'light')}>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>
           {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
 
@@ -58,7 +55,13 @@ export default function Navbar() {
           <span className="text-xs font-medium text-foreground hidden sm:inline">{user?.name || 'User'}</span>
         </div>
 
-        <Button variant="ghost" size="icon" onClick={handleLogout} title={t(lang, 'logout')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          title="Keluar"
+          className="text-muted-foreground hover:text-destructive"
+        >
           <LogOut className="h-4 w-4" />
         </Button>
       </div>

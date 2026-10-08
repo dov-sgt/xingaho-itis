@@ -7,16 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Division {
   id        Int      @id @default(autoincrement())
-  username  String   @unique
+  code      String   @unique
   name      String
-  password  String
-  role      String   // SUPERADMIN, MANAGER_OPS, SPV_OPS, LEADER_OPS, AGEN, SPV_QC, STAFF_QC, SPV_HR, STAFF_HR
-  division  String?  // IT, QC, OPS, HR
-  vendorId  Int?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  permissions Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  name       String
+  password   String
+  roleId     Int
+  divisionId Int
+  vendorId   Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  role       Role     @relation(fields: [roleId], references: [id])
+  division   Division @relation(fields: [divisionId], references: [id])
 }
 
 model MasterItem {
@@ -179,31 +200,31 @@ model VendorSubmission {
 }
 
 model Booking {
-  id            Int      @id @default(autoincrement())
-  bookingCode   String   @unique
-  borrowerName  String
-  itemType      String
-  startDate     String
-  startTime     String?
-  endDate       String
-  endTime       String?
-  location      String
-  status        String   @default("Pending")
-  createdBy     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  bookingCode String   @unique
+  borrowerName String
+  itemType    String
+  startDate   String
+  startTime   String?
+  endDate     String
+  endTime     String?
+  location    String
+  status      String   @default("Pending")
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ServisAsset {
-  id            Int      @id @default(autoincrement())
-  servisCode    String   @unique
-  date          DateTime @default(now())
-  itemName      String
-  teknisiName   String
-  status        String   @default("Pending")
-  createdBy     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  servisCode  String   @unique
+  date        DateTime @default(now())
+  itemName    String
+  teknisiName String
+  status      String   @default("Pending")
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model LogRuangServer {
@@ -214,85 +235,39 @@ model LogRuangServer {
   jamMasuk      String
   jamKeluar     String?
   keperluan     String
+  location      String
   createdAt     DateTime @default(now())
 }
 
-// ============ OPS: PENAGIHAN NASABAH ============
-
-model Nasabah {
-  id              Int      @id @default(autoincrement())
-  nasabahCode     String   @unique
-  nama            String
-  nik             String?
-  phone           String
-  email           String?
-  alamat         String?
-  loanAmount      Float    @default(0)
-  dueDate         DateTime?
-  status          String   @default("Active")
-  assignedTo      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Remark {
-  id              Int      @id @default(autoincrement())
-  nasabahId       Int
-  date            DateTime @default(now())
-  agenName        String
-  remark          String
-  promiseToPay    Boolean  @default(false)
-  promiseDate     DateTime?
-  status          String   @default("Pending")
-  createdAt       DateTime @default(now())
-}
-
-model PaymentAchievement {
-  id              Int      @id @default(autoincrement())
-  date            DateTime @default(now())
-  agenName        String
-  nasabahId       Int?
-  nasabahName     String
-  amount          Float    @default(0)
-  paymentMethod   String?
-  status          String   @default("Pending")
-  notedBy         String?
-  createdAt       DateTime @default(now())
-}
-
-// ============ QC: COMPLIANCE OJK ============
-
 model RecordingReview {
-  id              Int      @id @default(autoincrement())
-  reviewCode      String   @unique
-  date            DateTime @default(now())
-  agenName        String
-  nasabahName     String?
-  recordingUrl    String?
-  duration        String?
-  reviewedBy      String
-  compliance      String
-  notes           String?
-  createdAt       DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  reviewCode  String   @unique
+  date        DateTime @default(now())
+  agenName    String
+  nasabahName String?
+  recordingUrl String?
+  duration    String?
+  reviewedBy  String
+  compliance  String
+  notes       String?
+  createdAt   DateTime @default(now())
 }
 
 model Finding {
-  id              Int      @id @default(autoincrement())
-  findingCode     String   @unique
-  date            DateTime @default(now())
-  agenName        String
-  findingType     String
-  severity        String
-  description     String
-  evidence        String?
-  status          String   @default("Open")
-  resolvedBy      String?
-  resolutionNote  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  findingCode String   @unique
+  date        DateTime @default(now())
+  agenName    String
+  findingType String
+  severity    String
+  description String
+  evidence    String?
+  status      String   @default("Open")
+  resolvedBy  String?
+  resolutionNote String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
-
-// ============ HR: EMPLOYEE & LEAVE ============
 
 model Employee {
   id            Int      @id @default(autoincrement())
@@ -320,4 +295,13 @@ model LeaveRequest {
   status        String   @default("Pending")
   approvedBy    String?
   createdAt     DateTime @default(now())
+}
+
+model PaymentAchievement {
+  id        Int      @id @default(autoincrement())
+  agenName  String
+  date      DateTime @default(now())
+  amount    Float    @default(0)
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
 }

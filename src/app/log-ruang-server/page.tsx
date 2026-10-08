@@ -13,7 +13,7 @@ export default function LogRuangServerPage() {
   const [saving, setSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [formData, setFormData] = useState({ date: '', nama: '', jamMasuk: '', jamKeluar: '', keperluan: '' });
+  const [formData, setFormData] = useState({ date: '', nama: '', jamMasuk: '', jamKeluar: '', keperluan: '', location: '' });
   const [errorMsg, setErrorMsg] = useState('');
 
   const fetchLogs = () => {
@@ -25,8 +25,8 @@ export default function LogRuangServerPage() {
 
   useEffect(() => { fetchLogs(); }, []);
 
-  const handleOpenAdd = () => { setEditing(null); setFormData({ date: new Date().toISOString().split('T')[0], nama: '', jamMasuk: '', jamKeluar: '', keperluan: '' }); setErrorMsg(''); setIsModalOpen(true); };
-  const handleOpenEdit = (l: any) => { setEditing(l); setFormData({ date: l.date ? new Date(l.date).toISOString().split('T')[0] : '', nama: l.nama, jamMasuk: l.jamMasuk, jamKeluar: l.jamKeluar || '', keperluan: l.keperluan }); setErrorMsg(''); setIsModalOpen(true); };
+  const handleOpenAdd = () => { setEditing(null); setFormData({ date: new Date().toISOString().split('T')[0], nama: '', jamMasuk: '', jamKeluar: '', keperluan: '', location: '' }); setErrorMsg(''); setIsModalOpen(true); };
+  const handleOpenEdit = (l: any) => { setEditing(l); setFormData({ date: l.date ? new Date(l.date).toISOString().split('T')[0] : '', nama: l.nama, jamMasuk: l.jamMasuk, jamKeluar: l.jamKeluar || '', keperluan: l.keperluan, location: l.location || '' }); setErrorMsg(''); setIsModalOpen(true); };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); setErrorMsg(''); setSaving(true);
@@ -101,6 +101,7 @@ export default function LogRuangServerPage() {
                 <div><label className="block font-semibold mb-1">Jam Keluar</label><input type="time" value={formData.jamKeluar} onChange={(e) => setFormData({ ...formData, jamKeluar: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
               </div>
               <div><label className="block font-semibold mb-1">Keperluan</label><textarea rows={2} required value={formData.keperluan} onChange={(e) => setFormData({ ...formData, keperluan: e.target.value })} placeholder="Contoh: Maintenance server, cek AC, dll" className="w-full px-3 py-2 bg-slate-50 border rounded-xl"></textarea></div>
+              <div><label className="block font-semibold mb-1">Location</label><input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="Contoh: Rack A-01, Server Room Lt. 2" className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
                 <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan'}</button>
