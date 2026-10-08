@@ -5,13 +5,15 @@ import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useAuth();
   const { theme } = useApp();
 
+  // Apply dark mode class
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -20,16 +22,25 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [theme]);
 
-  if (pathname === '/login') {
-    return <>{children}</>;
-  }
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [user, pathname, router]);
 
-  if (!user) {
+  // Show loading while checking auth
+  if (!user && pathname !== '/login') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // If on login page, don't show sidebar and navbar
+  if (pathname === '/login') {
+    return <>{children}</>;
   }
 
   return (
