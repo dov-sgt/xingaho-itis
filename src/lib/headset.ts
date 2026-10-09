@@ -12,7 +12,7 @@ export const VALID_STATUSES = ['Pending', 'Used', 'Reject', 'Return', 'Good', 'D
 /** Kondisi saat pengajuan dibuat. */
 export const VALID_CONDITIONS = ['New Use', 'Exchange', 'Broken', 'Missing'] as const;
 
-/** Kondisi saat pengembalian — wajib diisi. */
+/** Kondisi saat pengembalian - wajib diisi. */
 export const VALID_RETURN_CONDITIONS = ['Good', 'Damage'] as const;
 
 export const RETURN_CONDITION_LABELS: Record<string, string> = {
@@ -30,6 +30,17 @@ export function normalizeHeadsetStatus(row: { status: string; returnCondition?: 
   const cond = String(row.returnCondition || '').trim().toLowerCase();
   return cond.includes('good') ? 'Good' : 'Damage';
 }
+
+/** Kategori stok yang dipakai untuk headset yang kembali dalam kondisi Good. */
+export const HEADSET_STOCK_CATEGORY = 'Headset';
+
+/**
+ * Kode stok cadangan untuk headset yang dipinjam tanpa `itemCode`
+ * (misalnya baris lama sebelum katalog itemcales ada, atau impor Excel
+ * yang kolom item-nya kosong). Tanpa kode ini pengembalian Good tidak bisa
+ * menambah stok karena `InventoryStock.itemCode` wajib unik.
+ */
+export const DEFAULT_HEADSET_STOCK_CODE = 'HEADSET-UMUM';
 
 /** Katalog item kategories Accessories untuk form Pengajuan Headset (item 13). */
 export async function listHeadsetCatalog(category: string) {

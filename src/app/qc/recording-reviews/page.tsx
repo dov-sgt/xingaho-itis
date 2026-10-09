@@ -33,7 +33,10 @@ export default function RecordingReviewsPage() {
       description="Audit rekaman panggilan beserta hasil review compliance-nya."
       icon={Headphones}
       endpoint="/api/recording-reviews"
-      searchPlaceholder="Cari kode review, agen, nasabah, atau reviewer…"
+      createFeature="recording_review"
+      updateFeature="recording_review"
+      deleteFeature="recording_review"
+      searchPlaceholder="Cari kode review, agen, nasabah, atau reviewer..."
       emptyTitle="Belum ada recording review"
       emptyDescription="Catat rekaman yang telah direview beserta kesimpulan compliance-nya."
       rowLabel={(r) => r.reviewCode}
@@ -94,7 +97,7 @@ export default function RecordingReviewsPage() {
         { key: 'nasabahName', label: 'Nama Nasabah', type: 'text' },
         { key: 'duration', label: 'Durasi', type: 'text', placeholder: 'mis. 04:32' },
         { key: 'reviewedBy', label: 'Nama Reviewer', type: 'text', required: true },
-        { key: 'recordingUrl', label: 'Link Recording', type: 'text', span: 3, placeholder: 'https://… (opsional)' },
+        { key: 'recordingUrl', label: 'Link Recording', type: 'text', span: 3, placeholder: 'https://... (opsional)' },
         { key: 'notes', label: 'Catatan Review', type: 'textarea', span: 3 },
       ]}
       info={

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError } from '@/lib/api';
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const errors = validate(body, false);
-    if (errors.length) return badRequest(errors.join(' · '));
+    if (errors.length) return badRequest(errors.join(' - '));
 
     const dup = await prisma.masterVendor.findUnique({ where: { code: body.code } });
     if (dup) return badRequest('Kode vendor sudah digunakan.');
@@ -86,7 +86,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     if (!body.id) return badRequest('ID wajib diisi.');
     const errors = validate(body, true);
-    if (errors.length) return badRequest(errors.join(' · '));
+    if (errors.length) return badRequest(errors.join(' - '));
 
     const existing = await prisma.masterVendor.findUnique({ where: { id: toInt(body.id) } });
     if (!existing) return badRequest('Vendor tidak ditemukan.');

@@ -143,7 +143,7 @@ export default function StockInPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari keterangan penerimaan…" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari keterangan penerimaan..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -187,7 +187,7 @@ export default function StockInPage() {
         <div className="space-y-3.5">
           <Field label="Barang" required error={errors.stockId}>
             <select className="xh-select" value={form.stockId} onChange={(e) => setForm({ ...form, stockId: e.target.value })}>
-              <option value="">— Pilih barang —</option>
+              <option value="">- Pilih barang -</option>
               {stocks.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.itemName} (stok {formatNumber(s.currentStock)})

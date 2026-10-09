@@ -111,7 +111,7 @@ export default function DamagedItemsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari item, kode, NIK, atau nama karyawan…" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari item, kode, NIK, atau nama karyawan..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -126,7 +126,7 @@ export default function DamagedItemsPage() {
                   <EmptyState
                     icon={PackagePlus}
                     title="Belum ada item damage"
-                    description="Bagus — belum ada headset yang dikembalikan dalam kondisi Damage. Daftar akan terisi otomatis ketika proses Return memilih kondisi Damage."
+                    description="Bagus - belum ada headset yang dikembalikan dalam kondisi Damage. Daftar akan terisi otomatis ketika proses Return memilih kondisi Damage."
                   />
                 }
               />

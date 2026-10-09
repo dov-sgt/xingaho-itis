@@ -1,5 +1,5 @@
 /**
- * Definisi kolom laporan — sumber tunggal untuk tampilan di halaman Reporting
+ * Definisi kolom laporan - sumber tunggal untuk tampilan di halaman Reporting
  * maupun untuk hasil ekspor (.xlsx / .csv) berisi logo perusahaan.
  *
  * `format` menentukan cara nilai ditampilkan DAN cara diekspor, sehingga

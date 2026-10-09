@@ -32,6 +32,7 @@ type Submission = {
 };
 
 type CatalogItem = { code: string; namaItem: string; brand: string; price: number | null; typeItem: string };
+type VendorOption = { id: number; name: string; serviceType: string };
 
 const CATEGORIES = ['Headset', 'Laptop', 'Aksesoris', 'Printer', 'Lainnya'];
 
@@ -44,6 +45,7 @@ export default function VendorSubmissionsPage() {
 
   const [rows, setRows] = useState<Submission[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -104,10 +106,25 @@ export default function VendorSubmissionsPage() {
       .catch(() => setCatalog([]));
   }, [apiFetch]);
 
+  // Daftar vendor (item 6): form memakai dropdown, bukan input teks bebas.
+  useEffect(() => {
+    apiFetch('/api/master/vendors?page=1&pageSize=200')
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d) ? d : (d?.data ?? []);
+        setVendors(
+          list
+            .filter((v: any) => v.status !== 'Inactive')
+            .map((v: any) => ({ id: v.id, name: v.name, serviceType: v.serviceType ?? '' })),
+        );
+      })
+      .catch(() => setVendors([]));
+  }, [apiFetch]);
+
   const openCreate = () => {
     setForm({
       namaPembuat: user?.name ?? '',
-      vendorName: 'Swapro',
+      vendorName: vendors[0]?.name ?? '',
       title: '',
       description: '',
       category: 'Headset',
@@ -166,7 +183,7 @@ export default function VendorSubmissionsPage() {
       toast(
         'success',
         next === 'Approved'
-          ? `Pengajuan disetujui${json.transactionItemId ? ' â€” headset tercatat dengan status Used.' : '.'}`
+          ? `Pengajuan disetujui${json.transactionItemId ? ' - headset tercatat dengan status Used.' : '.'}`
           : 'Pengajuan ditolak.',
       );
       setDetail(null);
@@ -277,7 +294,7 @@ export default function VendorSubmissionsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={setSearch} placeholder="Cari nomor, judul, atau nama pembuatâ€¦" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari nomor, judul, atau nama pembuat..." />
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="xh-select w-[170px]" aria-label="Filter status">
             <option value="">Semua status</option>
             <option value="Pending">Pending</option>
@@ -366,10 +383,10 @@ export default function VendorSubmissionsPage() {
                   });
                 }}
               >
-                <option value="">â€” Pilih item{catalog.length === 0 ? ' (katalog kosong)' : ''} â€”</option>
+                <option value="">- Pilih item{catalog.length === 0 ? ' (katalog kosong)' : ''} -</option>
                 {catalog.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.namaItem} Â· {c.brand} Â· {c.code}
+                    {c.namaItem} - {c.brand} - {c.code}
                   </option>
                 ))}
               </select>
@@ -382,7 +399,7 @@ export default function VendorSubmissionsPage() {
             hint={
               requiresItem(form.category)
                 ? selectedItem && selectedItem.price == null
-                  ? 'Item ini belum memiliki harga di Master Inventory â€” isi manual atau lengkapi harga master item.'
+                  ? 'Item ini belum memiliki harga di Master Inventory - isi manual atau lengkapi harga master item.'
                   : selectedItem
                     ? 'Terisi otomatis dari Master Inventory (hanya-baca).'
                     : 'Pilih item terlebih dahulu untuk mengisi harga otomatis.'
@@ -401,8 +418,29 @@ export default function VendorSubmissionsPage() {
             )}
           </Field>
 
-          <Field label="Vendor" required error={errors.vendorName}>
-            <input className="xh-input" value={form.vendorName} onChange={(e) => setForm({ ...form, vendorName: e.target.value })} />
+          <Field
+            label="Vendor"
+            required
+            error={errors.vendorName}
+            hint={
+              vendors.length
+                ? 'Diambil dari daftar vendor pada Master Vendor.'
+                : 'Master Vendor masih kosong - tambahkan vendor terlebih dahulu di menu Master Vendor.'
+            }
+          >
+            <select
+              className="xh-select"
+              value={form.vendorName}
+              onChange={(e) => setForm({ ...form, vendorName: e.target.value })}
+            >
+              <option value="">- Pilih vendor -</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.name}>
+                  {v.name}
+                  {v.serviceType ? ` - ${v.serviceType}` : ''}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Judul Pengajuan" required error={errors.title} className="sm:col-span-2">
             <input className="xh-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Pengajuan Headset Karyawan Baru" />

@@ -25,9 +25,12 @@ export default function VendorsPage() {
       description="Daftar vendor pemasok beserta kontak dan jenis layanan."
       icon={Building2}
       endpoint="/api/master/vendors"
+      createFeature="master_vendor"
+      updateFeature="master_vendor"
+      deleteFeature="master_vendor"
       statusKey="status"
       statusOptions={VENDOR_STATUSES}
-      searchPlaceholder="Cari kode, nama vendor, atau kontak…"
+      searchPlaceholder="Cari kode, nama vendor, atau kontak..."
       emptyTitle="Belum ada vendor"
       emptyDescription="Tambahkan vendor sebagai acuan untuk Pengajuan dan Purchase Request."
       rowLabel={(r) => r.name}

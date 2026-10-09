@@ -65,13 +65,13 @@ export default function PurchaseRequestPrintPage() {
   }, [apiFetch, params.id]);
 
   useEffect(() => {
-    if (pr) document.title = `${pr.prNumber} — ${COMPANY_FULL_NAME}`;
+    if (pr) document.title = `${pr.prNumber} - ${COMPANY_FULL_NAME}`;
   }, [pr]);
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-[13px] text-muted-foreground">
-        Menyiapkan dokumen…
+        Menyiapkan dokumen...
       </div>
     );
   }
@@ -182,7 +182,7 @@ export default function PurchaseRequestPrintPage() {
             </div>
             <div className="flex justify-between border-b border-dotted border-[#999] pb-1">
               <dt>Discount</dt>
-              <dd className="tabular-nums">− {formatRupiah(pr.diskon)}</dd>
+              <dd className="tabular-nums">- {formatRupiah(pr.diskon)}</dd>
             </div>
             <div className="flex justify-between pt-1 text-[11pt] font-bold">
               <dt>Grand Total</dt>
@@ -213,7 +213,7 @@ export default function PurchaseRequestPrintPage() {
         </section>
 
         <footer className="mt-10 border-t border-[#ccc] pt-2 text-center text-[8pt] leading-relaxed text-[#777]">
-          Dicetak dari sistem {COMPANY_FULL_NAME} pada {formatDate(new Date())} · Nomor {pr.prNumber}
+          Dicetak dari sistem {COMPANY_FULL_NAME} pada {formatDate(new Date())} - Nomor {pr.prNumber}
           <br />
           {COPYRIGHT_TEXT}
         </footer>

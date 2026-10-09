@@ -39,7 +39,7 @@ export default function Navbar({ onOpenMobileNav }: { onOpenMobileNav?: () => vo
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-bold tracking-tight text-foreground">{pageTitle}</p>
         <p className="hidden truncate text-[10.5px] text-muted-foreground sm:block">
-          {isSuperAdmin ? 'SuperAdmin — akses semua divisi' : `${user?.roleName ?? '-'} · ${user?.division ?? '-'}`}
+          {isSuperAdmin ? 'SuperAdmin - akses semua divisi' : `${user?.roleName ?? '-'} - ${user?.division ?? '-'}`}
         </p>
       </div>
 

@@ -12,7 +12,7 @@ import { COMPANY_LEGAL_NAME } from '@/lib/config';
 
 const COLLAPSE_KEY = 'itis_sidebar_collapsed';
 
-function Splash({ label = 'Memuat sistem…' }: { label?: string }) {
+function Splash({ label = 'Memuat sistem...' }: { label?: string }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
       <div className="h-9 w-9 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
@@ -29,7 +29,7 @@ function Forbidden() {
       <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-subtle text-danger-subtle-foreground">
         <Lock className="h-7 w-7" />
       </span>
-      <h1 className="text-xl font-bold text-foreground">403 — Akses Ditolak</h1>
+      <h1 className="text-xl font-bold text-foreground">403 - Akses Ditolak</h1>
       <p className="mt-2 max-w-md text-[13px] text-muted-foreground">
         Akun <span className="font-semibold text-foreground">{user?.name}</span> (
         {user?.roleName}) tidak memiliki izin untuk membuka halaman ini. Hubungi SuperAdmin bila Anda merasa
@@ -56,7 +56,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
-  // Dark mode — apply sebelum paint berikutnya agar tidak berkedip.
+  // Dark mode - apply sebelum paint berikutnya agar tidak berkedip.
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('dark', theme === 'dark');
@@ -105,9 +105,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Splash />;
   if (pathname === '/login') {
-    return !user ? <>{children}</> : <Splash label="Mengalihkan ke dashboard…" />;
+    return !user ? <>{children}</> : <Splash label="Mengalihkan ke dashboard..." />;
   }
-  if (!user) return <Splash label="Mengalihkan ke halaman login…" />;
+  if (!user) return <Splash label="Mengalihkan ke halaman login..." />;
 
   // Guard sisi-klien per halaman. Backend tetap menjadi pengawal sesungguhnya
   // (setiap API route memvalidasi ulang lewat requirePermission).

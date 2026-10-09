@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermission } from './session';
+import { requirePermission, getAuthContext, type AuthContext } from './session';
 import { ok, badRequest, serverError } from './api';
 import { toInt } from './documents';
 
@@ -24,10 +24,14 @@ export interface CrudRouteConfig {
   statusField?: string;
   /** Validasi sebelum create/update. */
   validate?: (body: any, isUpdate: boolean) => string[];
-  /** Siapkan payload create (boleh async). */
-  toCreate?: (body: any) => any;
+  /**
+   * Siapkan payload create (boleh async).
+   * `auth` = konteks sesi, dipakai untuk mengisi kolom yang wajib diisi
+   * otomatis (mis. `requestedBy`) sehingga tidak bisa terkirim null.
+   */
+  toCreate?: (body: any, auth?: AuthContext | null) => any;
   /** Siapkan payload update (boleh async). */
-  toUpdate?: (body: any) => any;
+  toUpdate?: (body: any, auth?: AuthContext | null) => any;
   orderBy?: any;
 }
 
@@ -76,8 +80,11 @@ export function buildCrudHandlers(cfg: CrudRouteConfig) {
       try {
         const body = await req.json();
         const errors = cfg.validate?.(body, false) ?? [];
-        if (errors.length) return badRequest(errors.join(' · '));
-        const created = await db[cfg.model].create({ data: cfg.toCreate ? await cfg.toCreate(body) : body });
+        if (errors.length) return badRequest(errors.join(' - '));
+        const auth = await getAuthContext(req);
+        const created = await db[cfg.model].create({
+          data: cfg.toCreate ? await cfg.toCreate(body, auth) : body,
+        });
         return ok(created, 201);
       } catch (error: any) {
         return serverError(error.message);
@@ -94,14 +101,14 @@ export function buildCrudHandlers(cfg: CrudRouteConfig) {
         if (!id) return badRequest('ID wajib diisi.');
 
         const errors = cfg.validate?.(body, true) ?? [];
-        if (errors.length) return badRequest(errors.join(' · '));
+        if (errors.length) return badRequest(errors.join(' - '));
 
         const existing = await db[cfg.model].findUnique({ where: { id: toInt(id) } });
         if (!existing) return badRequest('Data tidak ditemukan.');
 
         const updated = await db[cfg.model].update({
           where: { id: toInt(id) },
-          data: cfg.toUpdate ? await cfg.toUpdate(body) : body,
+          data: cfg.toUpdate ? await cfg.toUpdate(body, await getAuthContext(req)) : body,
         });
         return ok(updated);
       } catch (error: any) {

@@ -31,7 +31,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('id');
   const [theme, setThemeState] = useState<Theme>('light');
 
-  // Terapkan tema SEBELUM React melakukan paint → tidak ada kedip saat load.
+  // Terapkan tema SEBELUM React melakukan paint -> tidak ada kedip saat load.
   useEffect(() => {
     const t = readStoredTheme();
     const l = (localStorage.getItem(LANG_KEY) as Lang) || 'id';

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +10,7 @@ import { formatRupiah, formatDate, formatNumber } from '@/lib/format';
 import { VALID_CONDITIONS, VALID_RETURN_CONDITIONS, RETURN_CONDITION_LABELS } from '@/lib/headset';
 import {
   Headphones, Plus, Download, Upload, Undo2, Check, X, Trash2,
-  FileSpreadsheet, RotateCcw, Info, AlertTriangle,
+  FileSpreadsheet, RotateCcw, Info, AlertTriangle, Loader2,
 } from 'lucide-react';
 
 type Tx = {
@@ -70,6 +70,9 @@ export default function TransactionItemsPage() {
   const [returnForm, setReturnForm] = useState({ condition: '', note: '', price: 0 });
   const [returnBusy, setReturnBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Tx | null>(null);
+  // Item 10: sebelum approve/reject harus tampilkan ringkasan detail dulu.
+  const [decision, setDecision] = useState<{ tx: Tx; action: 'approve' | 'reject' } | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
 
@@ -148,34 +151,31 @@ export default function TransactionItemsPage() {
   };
 
   // ---------- Approve -> Used ----------
-  const approve = async (tx: Tx) => {
+  const applyDecision = async () => {
+    if (!decision) return;
+    const { tx, action } = decision;
+    const nextStatus = action === 'approve' ? 'Used' : 'Reject';
+    setDecisionBusy(true);
     try {
       const res = await apiFetch('/api/transactions/items', {
         method: 'PUT',
-        body: JSON.stringify({ id: tx.id, status: 'Used' }),
+        body: JSON.stringify({ id: tx.id, status: nextStatus }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Gagal menyetujui');
-      toast('success', `${tx.nik} disetujui â€” status menjadi Used.`);
-      if (detail?.id === tx.id) setDetail({ ...tx, status: 'Used' });
+      if (!res.ok) throw new Error(json.error || 'Gagal menyimpan perubahan');
+      toast(
+        'success',
+        action === 'approve'
+          ? `${tx.nik} disetujui - status menjadi Used.`
+          : `Pengajuan ${tx.nik} ditolak.`,
+      );
+      if (detail?.id === tx.id) setDetail({ ...tx, status: nextStatus });
+      setDecision(null);
       load();
     } catch (e: any) {
       toast('error', e.message);
-    }
-  };
-
-  const reject = async (tx: Tx) => {
-    try {
-      const res = await apiFetch('/api/transactions/items', {
-        method: 'PUT',
-        body: JSON.stringify({ id: tx.id, status: 'Reject' }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Gagal menolak');
-      toast('success', `Pengajuan ${tx.nik} ditolak.`);
-      load();
-    } catch (e: any) {
-      toast('error', e.message);
+    } finally {
+      setDecisionBusy(false);
     }
   };
 
@@ -209,8 +209,8 @@ export default function TransactionItemsPage() {
       toast(
         'success',
         returnForm.condition === 'Good'
-          ? 'Pengembalian diproses â€” stok Headset bertambah.'
-          : 'Pengembalian diproses â€” item dicatat sebagai Damage (stok tidak bertambah).',
+          ? 'Pengembalian diproses - stok Headset bertambah.'
+          : 'Pengembalian diproses - item dicatat sebagai Damage (stok tidak bertambah).',
       );
       setReturnOpen(null);
       setDetail(null);
@@ -278,7 +278,7 @@ export default function TransactionItemsPage() {
         <div className="min-w-0">
           <p className="truncate font-medium text-foreground">{r.name}</p>
           <p className="truncate text-[10.5px] text-muted-foreground">
-            {[r.project, r.vendor].filter(Boolean).join(' Â· ') || '-'}
+            {[r.project, r.vendor].filter(Boolean).join(' - ') || '-'}
           </p>
         </div>
       ),
@@ -300,10 +300,10 @@ export default function TransactionItemsPage() {
         <div className="flex items-center justify-end gap-1">
           {canUpdate && r.status === 'Pending' && (
             <>
-              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-success" title="Setujui (Used)" onClick={() => approve(r)}>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-success" title="Setujui (Used)" onClick={() => setDecision({ tx: r, action: 'approve' })}>
                 <Check className="h-4 w-4" />
               </button>
-              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Tolak" onClick={() => reject(r)}>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Tolak" onClick={() => setDecision({ tx: r, action: 'reject' })}>
                 <X className="h-4 w-4" />
               </button>
             </>
@@ -328,7 +328,7 @@ export default function TransactionItemsPage() {
       <PageHeader
         icon={Headphones}
         title="Headset User"
-        description="Siklus peminjaman headset: Pending â†’ Used â†’ Good (stok bertambah) atau Damage (masuk daftar damage)."
+        description="Siklus peminjaman headset: Pending -> Used -> Good (stok bertambah) atau Damage (masuk daftar damage)."
         actions={
           <>
             {/* Item 7 */}
@@ -367,8 +367,8 @@ export default function TransactionItemsPage() {
       <div className="flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground">
         <Info className="mt-px h-4 w-4 shrink-0" />
         <p>
-          <strong>Used</strong> saat pengajuan disetujui Â· <strong>Return</strong> wajib memilih kondisi.{' '}
-          <strong>Good</strong> â†’ stok Headset bertambah, <strong>Damage</strong> â†’ masuk Daftar Damage tanpa menambah
+          <strong>Used</strong> saat pengajuan disetujui - <strong>Return</strong> wajib memilih kondisi.{' '}
+          <strong>Good</strong> menambah stok Headset, <strong>Damage</strong> masuk Daftar Damage tanpa menambah
           stok. Status <strong>Used</strong> tidak dapat dihapus sebelum dikembalikan.
         </p>
       </div>
@@ -387,7 +387,7 @@ export default function TransactionItemsPage() {
           {importResult.errors.length > 0 ? (
             <ul className="max-h-40 space-y-1 overflow-y-auto scrollbar-thin text-[11.5px] text-danger-subtle-foreground">
               {importResult.errors.map((e, i) => (
-                <li key={i}>â€¢ {e}</li>
+                <li key={i}>- {e}</li>
               ))}
             </ul>
           ) : (
@@ -418,7 +418,7 @@ export default function TransactionItemsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari NIK, nama, vendor, atau projectâ€¦" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari NIK, nama, vendor, atau project..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -533,9 +533,9 @@ export default function TransactionItemsPage() {
         <div className="space-y-4">
           {returnOpen && (
             <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-[12px] text-muted-foreground-strong">
-              <p><span className="text-muted-foreground">NIK</span> Â· <span className="font-mono">{returnOpen.nik}</span></p>
-              <p><span className="text-muted-foreground">Nama</span> Â· {returnOpen.name}</p>
-              <p><span className="text-muted-foreground">Item</span> Â· {returnOpen.itemName || 'Headset'}</p>
+              <p><span className="text-muted-foreground">NIK</span> - <span className="font-mono">{returnOpen.nik}</span></p>
+              <p><span className="text-muted-foreground">Nama</span> - {returnOpen.name}</p>
+              <p><span className="text-muted-foreground">Item</span> - {returnOpen.itemName || 'Headset'}</p>
             </div>
           )}
 
@@ -574,7 +574,7 @@ export default function TransactionItemsPage() {
             </div>
           )}
 
-          <Field label="Nilai Kompensasi" hint="Opsional â€” diisi bila ada potongan deposit">
+          <Field label="Nilai Kompensasi" hint="Opsional - diisi bila ada potongan deposit">
             <MoneyInput value={returnForm.price} onChange={(n) => setReturnForm({ ...returnForm, price: n })} />
           </Field>
 
@@ -602,7 +602,7 @@ export default function TransactionItemsPage() {
                 Tutup
               </button>
               {canUpdate && detail.status === 'Pending' && (
-                <button className="xh-btn xh-btn-primary" onClick={() => { approve(detail); }}>
+                <button className="xh-btn xh-btn-primary" onClick={() => { setDecision({ tx: detail, action: 'approve' }); }}>
                   Setujui (Used)
                 </button>
               )}
@@ -642,10 +642,73 @@ export default function TransactionItemsPage() {
         )}
       </Modal>
 
+      {/* ---------- Item 10: popup konfirmasi detail sebelum submit ---------- */}
+      <Modal
+        open={!!decision}
+        onClose={() => !decisionBusy && setDecision(null)}
+        title={decision?.action === 'approve' ? 'Konfirmasi Persetujuan' : 'Konfirmasi Penolakan'}
+        description={
+          decision?.action === 'approve'
+            ? 'Periksa detail berikut. Status akan diubah menjadi Used dan headset langsung tercatat dipakai.'
+            : 'Periksa detail berikut. Status akan diubah menjadi Reject.'
+        }
+        size="md"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setDecision(null)} disabled={decisionBusy}>
+              Batal
+            </button>
+            <button
+              className={decision?.action === 'approve' ? 'xh-btn xh-btn-primary' : 'xh-btn xh-btn-danger'}
+              onClick={applyDecision}
+              disabled={decisionBusy}
+            >
+              {decisionBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {decision?.action === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak'}
+            </button>
+          </>
+        }
+      >
+        {decision && (
+          <div className="space-y-4">
+            <DescList
+              items={[
+                { label: 'NIK', value: <span className="font-mono">{decision.tx.nik}</span> },
+                { label: 'Nama', value: decision.tx.name },
+                { label: 'Status saat ini', value: <StatusBadge status={decision.tx.status} /> },
+                { label: 'Tanggal pengajuan', value: formatDate(decision.tx.date) },
+                { label: 'Kategori karyawan', value: decision.tx.employeeCategory },
+                { label: 'Item', value: decision.tx.itemName || 'Headset' },
+                { label: 'Kode item', value: decision.tx.itemCode || '-' },
+                { label: 'Kondisi', value: decision.tx.condition },
+                { label: 'Vendor', value: decision.tx.vendor || '-' },
+                { label: 'Project', value: decision.tx.project || '-' },
+                { label: 'Deposit', value: formatRupiah(decision.tx.deposit) },
+                { label: 'Catatan', value: decision.tx.note || '-' },
+              ]}
+            />
+            <div
+              className={
+                decision.action === 'approve'
+                  ? 'flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground'
+                  : 'flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-danger-subtle-foreground'
+              }
+            >
+              <Info className="mt-px h-4 w-4 shrink-0" />
+              <p>
+                {decision.action === 'approve'
+                  ? 'Setelah disetujui, item berstatus Used dan dapat dikembalikan lewat tombol Return dengan memilih kondisi Good atau Damage.'
+                  : 'Pengajuan yang ditolak tidak dapat diproses lagi. Data tetap tersimpan sebagai riwayat dengan status Reject.'}
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={!!confirmDelete}
         title="Hapus data headset?"
-        message={`Data ${confirmDelete?.nik} â€” ${confirmDelete?.name} akan dihapus permanen.`}
+        message={`Data ${confirmDelete?.nik} - ${confirmDelete?.name} akan dihapus permanen.`}
         confirmLabel="Hapus"
         onConfirm={remove}
         onCancel={() => setConfirmDelete(null)}

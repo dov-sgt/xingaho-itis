@@ -52,7 +52,7 @@ export function coercePermissions(raw: unknown): PermissionMap {
  * Aplikasi ini produksi-nya berjalan di HTTP biasa (http://192.168.52.140:3005).
  * Browser **menolak** menyimpan & mengirim cookie `Secure` lewat HTTP, sehingga
  * memakai `NODE_ENV === 'production'` membuat session ikut terbuang di setiap
- * request → "Sesi tidak valid atau sudah berakhir".
+ * request -> "Sesi tidak valid atau sudah berakhir".
  *
  * `COOKIE_SECURE=true` untuk memaksa HTTPS (mis. di belakang reverse proxy).
  */

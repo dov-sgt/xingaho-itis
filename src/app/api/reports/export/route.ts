@@ -5,17 +5,16 @@ import { ok, badRequest, serverError } from '@/lib/api';
 import { toInt } from '@/lib/documents';
 import { REPORT_TYPES, ReportType, REPORT_LABELS, REPORT_SEARCHABLE, allowedReportTypes } from '@/lib/reports';
 import { REPORT_COLUMNS, isMoneyColumn } from '@/lib/report-columns';
-import { readCompanyLogo, embedLogoInXlsx } from '@/lib/xlsx-brand';
 import { COMPANY_LEGAL_NAME, COMPANY_DISPLAY_NAME, COMPANY_TAGLINE } from '@/lib/config';
 import { formatDate } from '@/lib/format';
 import * as XLSX from 'xlsx';
 
 /**
- * Ekspor laporan — seluruh berkas memuat logo perusahaan.
+ * Ekspor laporan ke .xlsx dan .csv.
  *
- * - `.xlsx` : logo benar-benar disematkan (injeksi OOXML) + kop perusahaan.
- * - `.csv`  : CSV tidak mendukung gambar, identitas perusahaan ditulis sebagai
- *             baris metadata di atas header kolom.
+ * - `.xlsx` : kolom data bersih + sheet "Kop" berisi identitas perusahaan.
+ * - `.csv`  : identitas perusahaan ditulis sebagai baris metadata di atas
+ *             header kolom.
  *
  * Filter yang sama dengan halaman Reporting (search, rentang tanggal).
  */
@@ -66,7 +65,6 @@ export async function GET(req: NextRequest) {
         `# Divisi: ${auth.division}`,
         `# Periode: ${dateFrom || '-'} s.d. ${dateTo || '-'}`,
         `# Dicetak: ${formatDate(new Date())} oleh ${auth.name}`,
-        `# Logo perusahaan: /pict/xh_logo_1.png`,
       ];
       const header = cols.map((c) => c.header).join(',');
       const body = rows.map((r) =>
@@ -95,7 +93,7 @@ export async function GET(req: NextRequest) {
     // ---------- XLSX ----------
     const wb = XLSX.utils.book_new();
 
-    // Sheet data harus sheet PERTAMA supaya logo langsung terlihat saat dibuka.
+    // Sheet datadi atas pertama supaya mudah dibaca.
     type Cell = string | number;
     const aoa: Cell[][] = [cols.map((c) => c.header) as Cell[]];
     for (const row of rows) {
@@ -130,29 +128,16 @@ export async function GET(req: NextRequest) {
       ['Tanggal cetak', formatDate(new Date())],
       ['Total data', String(rows.length)],
       [],
-      [`© ${new Date().getFullYear()} ${COMPANY_LEGAL_NAME}. Seluruh hak cipta dilindungi.`],
+      [`(c) ${new Date().getFullYear()} ${COMPANY_LEGAL_NAME}. Seluruh hak cipta dilindungi.`],
     ];
     const wsKop = XLSX.utils.aoa_to_sheet(kop);
     wsKop['!cols'] = [{ wch: 20 }, { wch: 52 }];
     XLSX.utils.book_append_sheet(wb, wsKop, 'Kop');
 
-    let buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    const logo = readCompanyLogo();
-    if (logo) {
-      try {
-        buf = embedLogoInXlsx(Buffer.from(buf), XLSX, {
-          logoBytes: logo,
-          logoMime: logo[0] === 0x3c ? 'image/svg+xml' : 'image/png',
-          logoExt: logo[0] === 0x3c ? 'svg' : 'png',
-          companyName: COMPANY_LEGAL_NAME,
-          width: 200,
-          height: 56,
-        });
-      } catch (e: any) {
-        console.error('[reports/export] gagal menyematkan logo:', e?.message);
-      }
-    }
+    // Catatan: berkas .xlsx sengaja TIDAK diberi gambar logo - kolom data
+    // harus tetap bersih agar bisa langsung diolah/pivot di Excel. Identitas
+    // perusahaan tetap ada di sheet "Kop".
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
     return new NextResponse(new Uint8Array(buf), {
       status: 200,

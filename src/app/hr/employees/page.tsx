@@ -32,7 +32,7 @@ export default function EmployeesPage() {
       deleteFeature="employee_data"
       statusKey="status"
       statusOptions={EMPLOYEE_STATUSES}
-      searchPlaceholder="Cari kode, NIK, nama, atau departemen…"
+      searchPlaceholder="Cari kode, NIK, nama, atau departemen..."
       emptyTitle="Belum ada data karyawan"
       emptyDescription="Tambahkan data karyawan agar pengajuan cuti dan laporan HR dapat dibuat."
       rowLabel={(r) => r.name}

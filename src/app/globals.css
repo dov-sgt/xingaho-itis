@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   XINGHAO ITIS — DESIGN SYSTEM
+   XINGHAO ITIS - DESIGN SYSTEM
    Single source of truth for color, typography, spacing, radius, elevation.
    All tokens are theme-aware; never hardcode white/black in components.
    ========================================================================== */
@@ -107,7 +107,7 @@
     color-scheme: light;
   }
 
-  /* Gradien logo perusahaan — tetap sama di light & dark (logo adalah aset,
+  /* Gradien logo perusahaan - tetap sama di light & dark (logo adalah aset,
      bukan surface UI), tapi tetap memakai token agar tidak ada hex di komponen. */
   :root {
     --brand-mark-from: hsl(243 75% 59%);
@@ -115,7 +115,7 @@
   }
 
   .dark {
-    /* Semantic surface scale (dark) — layered, not inverted */
+    /* Semantic surface scale (dark) - layered, not inverted */
     --background: 225 40% 7%;
     --foreground: 213 31% 93%;
     --surface: 225 34% 10%;
@@ -238,7 +238,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     Data table — fully theme aware (fixes dark-mode white tables)
+     Data table - fully theme aware (fixes dark-mode white tables)
      --------------------------------------------------------------------- */
   .xh-table-wrapper {
     @apply w-full overflow-x-auto rounded-xl border border-border bg-card;

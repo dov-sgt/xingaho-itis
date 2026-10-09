@@ -80,7 +80,7 @@ export const DIVISION_NAV: { key: string; label: string; menus: NavItem[] }[] = 
 export const ALL_NAV: NavItem[] = DIVISION_NAV.flatMap((d) => d.menus);
 
 /**
- * Title halaman untuk path tertentu — dipakai breadcrumb/topbar.
+ * Title halaman untuk path tertentu - dipakai breadcrumb/topbar.
  */
 export function titleForPath(pathname: string): string {
   const all = [...ALL_NAV, ...ADMIN_NAV];

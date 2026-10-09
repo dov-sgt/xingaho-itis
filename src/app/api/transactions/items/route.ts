@@ -4,7 +4,13 @@ import { requirePermission, getAuthContext } from '@/lib/session';
 import { ok, badRequest, serverError, validationError } from '@/lib/api';
 import { collectErrors, validateRequired } from '@/lib/validation';
 import { toInt, toNumber, isNegative } from '@/lib/documents';
-import { VALID_STATUSES, VALID_CONDITIONS, VALID_RETURN_CONDITIONS } from '@/lib/headset';
+import {
+  VALID_STATUSES,
+  VALID_CONDITIONS,
+  VALID_RETURN_CONDITIONS,
+  HEADSET_STOCK_CATEGORY,
+  DEFAULT_HEADSET_STOCK_CODE,
+} from '@/lib/headset';
 
 /**
  * Siklus hidup item Headset (item 11):
@@ -157,36 +163,52 @@ export async function PUT(req: NextRequest) {
         return badRequest(`Hanya item berstatus "Used" yang dapat dikembalikan (status saat ini: ${current.status}).`);
       }
 
-      const targetItemCode = current.itemCode || itemCode || null;
-      const targetItemName = current.itemName || itemName || null;
+      // Item 9: stok harus bertambah walau `itemCode` belum terisi atau baris
+      // stoknya belum pernah dibuat. Tanpa fallback ini pengembalian kondisi
+      // Good diam-diam tidak menambah stok sama sekali.
+      const targetItemCode = current.itemCode || itemCode || DEFAULT_HEADSET_STOCK_CODE;
+      const targetItemName = current.itemName || itemName || 'Headset';
 
       // Atomic: update status + (tambah stok | catat damage) berjalan dalam satu transaksi.
       const updated = await prisma.$transaction(async (tx) => {
         if (conditionFinal === 'Good') {
           // Kondisi Good -> stok bertambah pada tipe/kategori Headset.
-          if (targetItemCode) {
-            const stock = await tx.inventoryStock.findUnique({ where: { itemCode: targetItemCode } });
-            if (stock) {
-              await tx.inventoryStock.update({
-                where: { id: stock.id },
-                data: {
-                  currentStock: stock.currentStock + 1,
-                  inStock: stock.inStock + 1,
-                  updatedAt: new Date(),
-                },
-              });
-              await tx.inventoryHistory.create({
-                data: {
-                  category: stock.category || 'Headset',
-                  stock: stock.currentStock + 1,
-                  inQty: 1,
-                  outQty: 0,
-                  note: `[Headset Return - Good] ${current.nik} · ${current.name}: 1 unit`,
-                  updateBy: auth?.name ?? 'Staff IT',
-                },
-              });
-            }
-          }
+          const stock = await tx.inventoryStock.findUnique({
+            where: { itemCode: targetItemCode },
+          });
+          // Buat baris stok bila item ini belum pernah masuk inventori.
+          const target =
+            stock ??
+            (await tx.inventoryStock.create({
+              data: {
+                itemCode: targetItemCode,
+                itemName: targetItemName,
+                category: HEADSET_STOCK_CATEGORY,
+                currentStock: 0,
+                inStock: 0,
+                outStock: 0,
+                note: 'Dibuat otomatis saat headset dikembalikan dalam kondisi Good',
+              },
+            }));
+
+          await tx.inventoryStock.update({
+            where: { id: target.id },
+            data: {
+              currentStock: target.currentStock + 1,
+              inStock: target.inStock + 1,
+              updatedAt: new Date(),
+            },
+          });
+          await tx.inventoryHistory.create({
+            data: {
+              category: target.category || HEADSET_STOCK_CATEGORY,
+              stock: target.currentStock + 1,
+              inQty: 1,
+              outQty: 0,
+              note: `[Headset Return - Good] ${current.nik} - ${current.name}: 1 unit`,
+              updateBy: auth?.name ?? 'Staff IT',
+            },
+          });
         } else {
           // Kondisi Damage -> masuk daftar item damage, stok TIDAK bertambah.
           await tx.damagedItem.create({

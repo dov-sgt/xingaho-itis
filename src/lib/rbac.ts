@@ -1,5 +1,5 @@
 /**
- * RBAC — Database driven.
+ * RBAC - Database driven.
  *
  * IMPORTANT: roles and permissions are NOT hardcoded here. They live in the
  * `Role.permissions` JSON column and are resolved server-side in
@@ -73,10 +73,50 @@ export function normalizeFeature(feature: string): Feature {
   return (FEATURE_ALIASES[feature] ?? feature) as Feature;
 }
 
+/**
+ * Peta endpoint API -> feature key.
+ *
+ * Halaman CRUD memakai ini sebagai nilai default. Sebelumnya `CrudPage`
+ * menebak feature dari path URL (mis. `/stock-out-transactions` menjadi
+ * `stock-out-transactions`), yang tidak pernah cocok dengan permission
+ * sehingga tombol aksi tersembunyi although user sebenarnya berhak.
+ * Semua pemetaan ditulis eksplisit di sini.
+ */
+export const ENDPOINT_FEATURE: Record<string, Feature> = {
+  '/api/master/items': 'master_item',
+  '/api/master/vendors': 'master_vendor',
+  '/api/inventory': 'inventory_type_item',
+  '/api/stock-in': 'inventory_type_item',
+  '/api/stock-out-transactions': 'transaction_stockout',
+  '/api/transactions/items': 'transaction_headset',
+  '/api/transactions/purchase-requests': 'purchase_request',
+  '/api/transactions/delivery-orders': 'delivery_order',
+  '/api/transactions/vendor-submissions': 'vendor_submission',
+  '/api/bookings': 'booking',
+  '/api/projector-bookings': 'booking',
+  '/api/servis-assets': 'servis_asset',
+  '/api/log-ruang-server': 'log_ruang_server',
+  '/api/recordings': 'recording_review',
+  '/api/recording-reviews': 'recording_review',
+  '/api/findings': 'finding',
+  '/api/employees': 'employee_data',
+  '/api/leave-requests': 'leave_request',
+  '/api/nasabah': 'transaction_stockout',
+  '/api/payment-achievements': 'transaction_stockout',
+  '/api/users': 'user_management',
+  '/api/roles': 'role_management',
+  '/api/divisions': 'division_management',
+};
+
+/** Feature key untuk sebuah endpoint API; null bila tidak terdaftar. */
+export function featureForEndpoint(endpoint: string): Feature | null {
+  return ENDPOINT_FEATURE[endpoint] ?? null;
+}
+
 export type PermissionMap = Record<string, Action[] | undefined>;
 
 /**
- * Safe permission lookup — tolerates malformed JSON stored by users.
+ * Safe permission lookup - tolerates malformed JSON stored by users.
  */
 export function hasPermissionIn(
   permissions: PermissionMap | null | undefined,

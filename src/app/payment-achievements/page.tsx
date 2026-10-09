@@ -22,9 +22,12 @@ export default function PaymentAchievementsPage() {
       description="Pencapaian pembayaran agen beserta nominalnya."
       icon={CreditCard}
       endpoint="/api/payment-achievements"
+      createFeature="transaction_stockout"
+      updateFeature="transaction_stockout"
+      deleteFeature="transaction_stockout"
       statusKey="status"
       statusOptions={STATUS}
-      searchPlaceholder="Cari nama agen…"
+      searchPlaceholder="Cari nama agen..."
       emptyTitle="Belum ada data pencapaian pembayaran"
       emptyDescription="Catat pencapaian pembayaran agen untuk monitoring."
       rowLabel={(r) => r.agenName}

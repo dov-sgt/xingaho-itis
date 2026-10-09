@@ -21,7 +21,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
       <div className="h-9 w-9 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
-      <p className="text-[12.5px] text-muted-foreground">Mengalihkan…</p>
+      <p className="text-[12.5px] text-muted-foreground">Mengalihkan...</p>
     </div>
   );
 }

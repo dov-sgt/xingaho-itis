@@ -217,7 +217,7 @@ export default function RemarksPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari remark, agen, atau nama nasabah…" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari remark, agen, atau nama nasabah..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -267,10 +267,10 @@ export default function RemarksPage() {
               disabled={!!editing}
               onChange={(e) => setForm({ ...form, nasabahId: e.target.value })}
             >
-              <option value="">— Pilih nasabah —</option>
+              <option value="">- Pilih nasabah -</option>
               {nasabah.map((n) => (
                 <option key={n.id} value={n.id}>
-                  {n.nama} — {n.nik}
+                  {n.nama} - {n.nik}
                 </option>
               ))}
             </select>
@@ -279,7 +279,7 @@ export default function RemarksPage() {
             <input className="xh-input" value={form.agenName} onChange={(e) => setForm({ ...form, agenName: e.target.value })} />
           </Field>
           <Field label="Remark" required error={errors.remark} className="sm:col-span-2">
-            <textarea className="xh-input min-h-[96px] py-2" value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="Hasil kontak, keluhan, atau tindak lanjut…" />
+            <textarea className="xh-input min-h-[96px] py-2" value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="Hasil kontak, keluhan, atau tindak lanjut..." />
           </Field>
           <Field label="Ada Janji Bayar?">
             <label className="flex h-9 cursor-pointer items-center gap-2.5">

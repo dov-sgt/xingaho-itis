@@ -1,5 +1,12 @@
 /**
- * Verifikasi end-to-end: semua dokumen unduhan memuat logo perusahaan.
+ * Verifikasi end-to-end: semua dokumen unduhan tetap VALID setelah logo
+ * dihapus dari berkas Excel.
+ *
+ * Syarat yang diperiksa:
+ *   - .xlsx harus tetap bisa dibaca SheetJS, punya sheet, dan berisi baris data.
+ *   - .xlsx TIDAK boleh memuat gambar tersemat (xl/media, drawings).
+ *   - .csv harus memuat identitas perusahaan pada baris metadata `#`.
+ *
  * Jalankan:  node scripts/verify-exports.js
  */
 
@@ -67,12 +74,16 @@ function checkXlsx(buf, label) {
     wbOk = false;
   }
 
-  const ok = media.length > 0 && drawing.length > 0 && sheetHasDrawing && wbOk;
+  // Berkas .xlsx sengaja TIDAK diberi gambar logo (permintaan pengguna):
+  // kolom data harus tetap bersih agar bisa langsung diolah/pivot di Excel.
+  // Yang diverifikasi di sini: workbook terbaca, punya sheet, baris data > 0,
+  // dan TIDAK ada gambar yang tersemat (regresi bila logo muncul lagi).
+  const noEmbeddedImage = media.length === 0 && drawing.length === 0 && !sheetHasDrawing;
+  const ok = wbOk && rowCount > 0 && noEmbeddedImage;
   console.log(`  ${ok ? 'OK  ' : 'GAGAL'} ${label}`);
-  console.log(`        media=${media.join(',') || '-'} (${logoBytes} bytes)`);
-  console.log(`        drawing=${drawing.join(',') || '-'}`);
-  console.log(`        sheet punya <drawing>=${sheetHasDrawing}, ContentTypes override=${contentTypes.includes('drawings/drawing1.xml')}`);
   console.log(`        workbook terbaca=${wbOk}, sheets=[${sheetNames}], baris sheet1=${rowCount}`);
+  console.log(`        gambar tersemat=${noEmbeddedImage ? 'tidak ada (sesuai syarat)' : 'ADA (tidak SHOULD)'} media=${media.join(',') || '-'} drawing=${drawing.join(',') || '-'}`);
+  console.log(`        <drawing> di sheet=${sheetHasDrawing}, ContentTypes drawing=${contentTypes.includes('drawings/drawing1.xml')}`);
   return ok;
 }
 
@@ -117,7 +128,7 @@ async function main() {
 
   if (await detectStaleBuild(H)) {
     console.log('=== 0. Diagnosa build ===');
-    console.log('  GAGAL server menyajikan build lama — hasil di bawah tidak relevan.');
+    console.log('  GAGAL server menyajikan build lama - hasil di bawah tidak relevan.');
     console.log('\n=== Ringkasan ===');
     console.log(`  Lulus : ${pass}`);
     console.log(`  Gagal : ${fail}`);
@@ -139,15 +150,14 @@ async function main() {
     checkXlsx(buf, `${type} (${buf.length} bytes)`) ? pass++ : fail++;
   }
 
-  console.log('\n=== 3. Export Laporan (.csv) — identitas perusahaan di header ===');
+  console.log('\n=== 3. Export Laporan (.csv) - identitas perusahaan di header ===');
   for (const type of ['purchase_request', 'headset']) {
     const res = await fetch(`${BASE}/api/reports/export?type=${type}&format=csv`, { headers: H });
-    const txt = (await res.text()).replace(/^﻿/, '');
+    const txt = (await res.text()).replace(/^\uFEFF/, '');
     const lines = txt.split('\n');
     const hasCompany = lines[0].includes('PT Xinghao Technology');
-    const hasLogoRef = lines.some((l) => l.includes('xh_logo_1.png'));
     const hasHeader = lines.findIndex((l) => l && !l.startsWith('#')) >= 0;
-    const ok = hasCompany && hasLogoRef && hasHeader;
+    const ok = hasCompany && hasHeader;
     console.log(`  ${ok ? 'OK  ' : 'GAGAL'} ${type} (HTTP ${res.status})`);
     lines.slice(0, 7).forEach((l) => console.log(`        ${l.slice(0, 100)}`));
     ok ? pass++ : fail++;
@@ -156,9 +166,9 @@ async function main() {
   console.log('\n=== 4. Template CSV ===');
   {
     const res = await fetch(`${BASE}/api/transactions/items/template?format=csv`, { headers: H });
-    const txt = (await res.text()).replace(/^﻿/, '');
+    const txt = (await res.text()).replace(/^\uFEFF/, '');
     const lines = txt.split('\n');
-    const ok = lines[0].includes('PT Xinghao Technology') && lines.some((l) => l.includes('xh_logo_1.png'));
+    const ok = lines[0].includes('PT Xinghao Technology');
     console.log(`  ${ok ? 'OK  ' : 'GAGAL'} template csv (HTTP ${res.status})`);
     lines.slice(0, 6).forEach((l) => console.log(`        ${l.slice(0, 100)}`));
     ok ? pass++ : fail++;

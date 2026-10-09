@@ -1,7 +1,7 @@
 /**
  * Format & parse helpers untuk nilai uang Rupiah.
  * Nilai SELALU disimpan di database sebagai angka (Float/Decimal), tidak pernah
- * string — helper ini hanya untuk tampilan & input.
+ * string - helper ini hanya untuk tampilan & input.
  */
 
 export function formatRupiah(value: number | string | null | undefined, withPrefix = true): string {

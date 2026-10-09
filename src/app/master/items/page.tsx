@@ -256,7 +256,7 @@ export default function MasterItemsPage() {
           {uploadResult.errors.length ? (
             <ul className="max-h-40 space-y-1 overflow-y-auto scrollbar-thin text-[11.5px] text-danger-subtle-foreground">
               {uploadResult.errors.map((e, i) => (
-                <li key={i}>• {e}</li>
+                <li key={i}>- {e}</li>
               ))}
             </ul>
           ) : (
@@ -267,7 +267,7 @@ export default function MasterItemsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={setSearch} placeholder="Cari kode, nama item, atau brand…" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari kode, nama item, atau brand..." />
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="xh-select w-[190px]" aria-label="Filter kategori">
             <option value="All">Semua kategori</option>
             {CATEGORIES.map((c) => (
@@ -302,7 +302,7 @@ export default function MasterItemsPage() {
         open={formOpen}
         onClose={() => !saving && setFormOpen(false)}
         title={editing ? 'Ubah Master Item' : 'Tambah Master Item'}
-        description="Harga bersifat opsional — biarkan 0 bila belum ada acuan harga."
+        description="Harga bersifat opsional - biarkan 0 bila belum ada acuan harga."
         footer={
           <>
             <button className="xh-btn xh-btn-secondary" onClick={() => setFormOpen(false)} disabled={saving}>
@@ -331,7 +331,7 @@ export default function MasterItemsPage() {
           <Field label="Brand" htmlFor="mi-brand">
             <input id="mi-brand" className="xh-input" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
           </Field>
-          <Field label="Harga Satuan" error={errors.price} hint="Opsional · sumber harga otomatis untuk Pengajuan Headset" className="sm:col-span-2">
+          <Field label="Harga Satuan" error={errors.price} hint="Opsional - sumber harga otomatis untuk Pengajuan Headset" className="sm:col-span-2">
             <MoneyInput value={form.price} onChange={(n) => setForm({ ...form, price: n })} />
           </Field>
         </form>

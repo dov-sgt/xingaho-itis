@@ -1,4 +1,4 @@
-﻿import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
+import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
 
 const handlers = buildCrudHandlers({
   model: 'logRuangServer',

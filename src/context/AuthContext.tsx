@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback((u: UserSession) => {
     setUser(u);
-    // Convenience mirror for SSR/debug only — the HttpOnly cookie remains the
+    // Convenience mirror for SSR/debug only - the HttpOnly cookie remains the
     // authoritative credential for the server.
     try {
       localStorage.setItem('itis_user', JSON.stringify(u));

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError, validationError } from '@/lib/api';

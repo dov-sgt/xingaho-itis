@@ -30,9 +30,9 @@ export default function ServisAssetsPage() {
       deleteFeature="servis_asset"
       statusKey="status"
       statusOptions={STATUS}
-      searchPlaceholder="Cari kode servis, barang, atau teknisi…"
+      searchPlaceholder="Cari kode servis, barang, atau teknisi..."
       emptyTitle="Belum ada riwayat servis"
-      emptyDescription="Catat setiap perbaikan aset agar riwayat和维护 dapat dilacak."
+      emptyDescription="Catat setiap perbaikan aset agar riwayat pemeliharaan dapat dilacak."
       rowLabel={(r) => r.servisCode}
       columns={[
         { key: 'servisCode', header: 'Kode', cell: (r) => <CodeBadge>{r.servisCode}</CodeBadge> },

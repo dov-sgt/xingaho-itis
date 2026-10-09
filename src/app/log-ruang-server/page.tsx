@@ -27,7 +27,7 @@ export default function LogRuangServerPage() {
       createFeature="log_ruang_server"
       updateFeature="log_ruang_server"
       deleteFeature="log_ruang_server"
-      searchPlaceholder="Cari nama, keperluan, atau lokasi…"
+      searchPlaceholder="Cari nama, keperluan, atau lokasi..."
       emptyTitle="Belum ada log ruang server"
       emptyDescription="Setiap kunjungan ke ruang server harus dicatat lengkap dengan jam masuk dan keluar."
       rowLabel={(r) => r.logCode}
@@ -53,7 +53,7 @@ export default function LogRuangServerPage() {
                 <LogIn className="h-3 w-3" />
                 {r.jamMasuk}
               </span>
-              <span className="text-muted-foreground">→</span>
+              <span className="text-muted-foreground">&rarr;</span>
               <span className="flex items-center gap-1 text-muted-foreground-strong">
                 <LogOut className="h-3 w-3" />
                 {r.jamKeluar ?? '-'}
@@ -76,7 +76,7 @@ export default function LogRuangServerPage() {
       ]}
       fields={[
         { key: 'nama', label: 'Nama', type: 'text', required: true, span: 2 },
-        { key: 'location', label: 'Lokasi', type: 'text', placeholder: 'mis. Lantai 3 — Ruang Server A', hint: 'Isi bebas, boleh berupa lokasi spesifik' },
+        { key: 'location', label: 'Lokasi', type: 'text', placeholder: 'mis. Lantai 3 - Ruang Server A', hint: 'Isi bebas, boleh berupa lokasi spesifik' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: new Date().toISOString().slice(0, 10) },
         { key: 'jamMasuk', label: 'Jam Masuk', type: 'text', required: true, placeholder: 'mis. 14:30' },
         { key: 'jamKeluar', label: 'Jam Keluar', type: 'text', placeholder: 'Kosongkan bila belum keluar' },

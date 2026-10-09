@@ -184,7 +184,7 @@ export default function DeliveryOrdersPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nomor DO, nomor PR, item, atau penerima…" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nomor DO, nomor PR, item, atau penerima..." />
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="xh-select w-[170px]" aria-label="Filter status">
             <option value="">Semua status</option>
             {STATUS_OPTIONS.map((s) => (
@@ -291,8 +291,8 @@ export default function DeliveryOrdersPage() {
         {receiveOpen && (
           <div className="space-y-3.5">
             <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-[12px] text-muted-foreground-strong">
-              <p><span className="text-muted-foreground">Item</span> · {receiveOpen.itemName}</p>
-              <p><span className="text-muted-foreground">Qty dipesan</span> · {formatNumber(receiveOpen.qtyOrdered)}</p>
+              <p><span className="text-muted-foreground">Item</span> - {receiveOpen.itemName}</p>
+              <p><span className="text-muted-foreground">Qty dipesan</span> - {formatNumber(receiveOpen.qtyOrdered)}</p>
             </div>
             <Field label="Qty diterima" required error={errors.qty}>
               <NumberInput

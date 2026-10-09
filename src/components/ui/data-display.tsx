@@ -218,15 +218,15 @@ export function Pagination({
     ) : null;
   }
 
-  const window: (number | '…')[] = [];
+  const window: (number | '...')[] = [];
   const push = (n: number) => window.push(n);
   if (pages <= 7) {
     for (let i = 1; i <= pages; i++) push(i);
   } else {
     push(1);
-    if (page > 3) window.push('…');
+    if (page > 3) window.push('...');
     for (let i = Math.max(2, page - 1); i <= Math.min(pages - 1, page + 1); i++) push(i);
-    if (page < pages - 2) window.push('…');
+    if (page < pages - 2) window.push('...');
     push(pages);
   }
 
@@ -236,19 +236,19 @@ export function Pagination({
     <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
       {total !== undefined && (
         <p className="text-[11.5px] text-muted-foreground">
-          Menampilkan <span className="font-semibold tabular-nums">{(page - 1) * (pageSize ?? 10) + 1}</span>–
+          Menampilkan <span className="font-semibold tabular-nums">{(page - 1) * (pageSize ?? 10) + 1}</span>-
           <span className="font-semibold tabular-nums">{Math.min(page * (pageSize ?? 10), total)}</span> dari{' '}
           <span className="font-semibold tabular-nums">{total}</span> data
         </p>
       )}
       <div className="flex items-center gap-1">
         <button className={btn} disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Halaman sebelumnya">
-          ‹
+          &lt;
         </button>
         {window.map((p, i) =>
-          p === '…' ? (
+          p === '...' ? (
             <span key={`gap-${i}`} className="px-1 text-[11.5px] text-muted-foreground">
-              …
+              ...
             </span>
           ) : (
             <button
@@ -262,7 +262,7 @@ export function Pagination({
           ),
         )}
         <button className={btn} disabled={page >= pages} onClick={() => onPageChange(page + 1)} aria-label="Halaman berikutnya">
-          ›
+          &gt;
         </button>
       </div>
     </div>
@@ -284,7 +284,7 @@ export function Toolbar({ children, className }: { children: React.ReactNode; cl
 export function SearchInput({
   value,
   onChange,
-  placeholder = 'Cari…',
+  placeholder = 'Cari...',
   className,
 }: {
   value: string;

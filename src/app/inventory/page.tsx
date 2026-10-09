@@ -186,13 +186,13 @@ export default function InventoryPage() {
       key: 'inQty',
       header: 'Masuk',
       numeric: true,
-      cell: (r) => <span className="font-semibold tabular-nums text-success">{r.inQty ? `+${r.inQty}` : '—'}</span>,
+      cell: (r) => <span className="font-semibold tabular-nums text-success">{r.inQty ? `+${r.inQty}` : '-'}</span>,
     },
     {
       key: 'outQty',
       header: 'Keluar',
       numeric: true,
-      cell: (r) => <span className="font-semibold tabular-nums text-danger">{r.outQty ? `−${r.outQty}` : '—'}</span>,
+      cell: (r) => <span className="font-semibold tabular-nums text-danger">{r.outQty ? `-${r.outQty}` : '-'}</span>,
     },
     { key: 'stock', header: 'Saldo', numeric: true, cell: (r) => <span className="font-bold tabular-nums text-foreground">{formatNumber(r.stock)}</span> },
     { key: 'updateBy', header: 'Oleh', cell: (r) => <span className="text-[11.5px] text-muted-foreground">{r.updateBy || '-'}</span>, hideOnMobile: true },
@@ -255,7 +255,7 @@ export default function InventoryPage() {
         {tab === 'stok' && (
           <>
             <Toolbar>
-              <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nama barang, kode, atau kategori…" />
+              <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nama barang, kode, atau kategori..." />
             </Toolbar>
             <div className="p-3 sm:p-4">
               {loading ? (
@@ -370,7 +370,7 @@ export default function InventoryPage() {
         <div className="space-y-3.5">
           <Field label="Barang" required error={errors.stockId}>
             <select className="xh-select" value={movement.stockId} onChange={(e) => setMovement({ ...movement, stockId: e.target.value })}>
-              <option value="">— Pilih barang —</option>
+              <option value="">- Pilih barang -</option>
               {stocks.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.itemName} (stok {formatNumber(s.currentStock)})
@@ -386,7 +386,7 @@ export default function InventoryPage() {
               className="xh-input min-h-[72px] py-2"
               value={movement.note}
               onChange={(e) => setMovement({ ...movement, note: e.target.value })}
-              placeholder="Alasan atau keterangan pergerakan…"
+              placeholder="Alasan atau keterangan pergerakan..."
             />
           </Field>
         </div>

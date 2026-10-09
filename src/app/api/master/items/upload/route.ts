@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError } from '@/lib/api';
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         const namaItem = String(row.namaItem || row['Nama Item'] || row.name || '').trim();
         const brand = String(row.brand || row.Brand || '-').trim();
 
-        // Harga opsional (item 12) — kolom "price" / "harga".
+        // Harga opsional (item 12) - kolom "price" / "harga".
         const priceRaw = row.price ?? row.Price ?? row.harga ?? row.Harga;
         const price =
           priceRaw === undefined || priceRaw === null || String(priceRaw).trim() === ''

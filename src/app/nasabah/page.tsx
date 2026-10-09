@@ -25,9 +25,12 @@ export default function NasabahPage() {
       description="Data induk nasabah beserta pinjol dan jatuh tempo. Digunakan sebagai acuan follow-up Remarks."
       icon={Users}
       endpoint="/api/nasabah"
+      createFeature="transaction_stockout"
+      updateFeature="transaction_stockout"
+      deleteFeature="transaction_stockout"
       statusKey="status"
       statusOptions={STATUS}
-      searchPlaceholder="Cari NIK, nama, telepon, atau PIC…"
+      searchPlaceholder="Cari NIK, nama, telepon, atau PIC..."
       emptyTitle="Belum ada data nasabah"
       emptyDescription="Tambahkan nasabah agar follow-up dan pencatatan remark dapat dilakukan."
       rowLabel={(r) => r.nama}

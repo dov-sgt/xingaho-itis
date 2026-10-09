@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/audit-charset.js && node scripts/audit-required-fields.js",
     "build": "next build",
     "start": "next start -p 3005",
     "lint": "next lint",
@@ -15,6 +16,9 @@
     "migrate:delivery-orders": "node prisma/backfill-delivery-orders.js",
     "logo:generate": "node scripts/generate-logo.js",
     "verify:exports": "node scripts/verify-exports.js",
+    "lint:charset": "node scripts/audit-charset.js",
+    "lint:fields": "node scripts/audit-required-fields.js",
+    "lint": "npm run lint:charset && npm run lint:fields && next lint",
     "migrate:headset-status": "node prisma/migrate-headset-status.js"
   },
   "dependencies": {

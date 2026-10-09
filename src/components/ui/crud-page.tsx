@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { normalizeFeature, featureForEndpoint } from '@/lib/rbac';
 import { useToast } from '@/components/Toast';
 import { PageHeader, Panel, Field, EmptyState, TableSkeleton } from '@/components/ui/layout';
 import { DataTable, Column, StatusBadge, Pagination, Toolbar, SearchInput, CodeBadge } from '@/components/ui/data-display';
@@ -90,7 +91,7 @@ export function CrudPage<T extends { id: number }>({
   fields,
   statusKey,
   statusOptions = [],
-  searchPlaceholder = 'Cari…',
+  searchPlaceholder = 'Cari...',
   emptyTitle = 'Belum ada data',
   emptyDescription,
   emptyIcon,
@@ -106,8 +107,12 @@ export function CrudPage<T extends { id: number }>({
   const { can, apiFetch } = useAuth();
   const { toast } = useToast();
 
-  const baseFeature = endpoint.replace(/^\/api\//, '').split('/')[0];
-  const createF = createFeature ?? baseFeature;
+  // Feature key WAJIB ada di peta ENDPOINT_FEATURE. Kalau tidak, fallback ke
+  // segment path URL - perilaku lama yang pernah membuat tombol aksi tersembunyi
+  // karena nama feature tidak pernah cocok dengan permission.
+  const baseFeature =
+    createFeature ?? featureForEndpoint(endpoint) ?? normalizeFeature(endpoint.replace(/^\/api\//, '').split('/')[0]);
+  const createF = baseFeature;
   const updateF = updateFeature ?? createF;
   const deleteF = deleteFeature ?? createF;
 
@@ -318,7 +323,7 @@ export function CrudPage<T extends { id: number }>({
       case 'select':
         return (
           <select className="xh-select" value={v ?? ''} disabled={disabled} onChange={(e) => set(e.target.value)}>
-            {!f.required && <option value="">— Tidak diisi —</option>}
+            {!f.required && <option value="">- Tidak diisi -</option>}
             {(f.options ?? []).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -472,7 +477,7 @@ export function CrudPage<T extends { id: number }>({
       <Modal
         open={!!detail}
         onClose={() => setDetail(null)}
-        title={detail && rowLabel ? `${title} · ${rowLabel(detail)}` : title}
+        title={detail && rowLabel ? `${title} - ${rowLabel(detail)}` : title}
         size="lg"
         footer={
           <button className="xh-btn xh-btn-secondary" onClick={() => setDetail(null)}>

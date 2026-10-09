@@ -55,7 +55,7 @@ export default function LeaveRequestsPage() {
       deleteFeature="leave_request"
       statusKey="status"
       statusOptions={LEAVE_STATUSES}
-      searchPlaceholder="Cari kode, alasan, atau tipe cuti…"
+      searchPlaceholder="Cari kode, alasan, atau tipe cuti..."
       emptyTitle="Belum ada pengajuan cuti"
       emptyDescription="Pengajuan cuti karyawan akan tampil di sini lengkap dengan rentang tanggalnya."
       rowLabel={(r) => r.requestCode}
@@ -78,7 +78,7 @@ export default function LeaveRequestsPage() {
           cell: (r) => (
             <span className="flex items-center gap-1 whitespace-nowrap text-[11.5px] text-muted-foreground">
               <CalendarDays className="h-3 w-3" />
-              {formatDate(r.startDate)} – {formatDate(r.endDate)}
+              {formatDate(r.startDate)} - {formatDate(r.endDate)}
             </span>
           ),
           hideOnMobile: true,
@@ -92,7 +92,7 @@ export default function LeaveRequestsPage() {
           type: 'select',
           required: true,
           span: 2,
-          options: employees.map((e) => ({ value: String(e.id), label: `${e.name} — ${e.department}` })),
+          options: employees.map((e) => ({ value: String(e.id), label: `${e.name} - ${e.department}` })),
         },
         {
           key: 'status',
@@ -110,7 +110,7 @@ export default function LeaveRequestsPage() {
       info={
         <>
           Setelah pengajuan disetujui, isikan kolom <strong>Disetujui Oleh</strong> dan ubah status menjadi{' '}
-          <strong>Approved</strong>. Rentang tanggal akan otomatis tervalidasi (tanggal selesai ≥ tanggal mulai).
+          <strong>Approved</strong>. Rentang tanggal akan otomatis tervalidasi (tanggal selesai harus lebih besar atau sama dengan tanggal mulai).
         </>
       }
     />

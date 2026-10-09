@@ -1,7 +1,17 @@
 import { buildCrudHandlers } from '@/lib/crud-route';
-import { toInt, toNumber } from '@/lib/documents';
+import { toInt } from '@/lib/documents';
+import type { AuthContext } from '@/lib/session';
 
 const STATUS = ['Pending', 'Approved', 'Rejected'];
+
+/** Nama pengaju: dari form, atau dari sesi bila form tidak mengirimnya. */
+function requestedByOf(body: any, auth?: AuthContext | null): string {
+  const fromBody = typeof body.requestedBy === 'string' ? body.requestedBy.trim() : '';
+  if (fromBody) return fromBody;
+  const fromSession = auth?.name?.trim();
+  if (fromSession) return fromSession;
+  throw new Error('Nama pengaju wajib diisi.');
+}
 
 const handlers = buildCrudHandlers({
   model: 'stockOutTransaction',
@@ -16,7 +26,8 @@ const handlers = buildCrudHandlers({
     if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
     return e;
   },
-  toCreate: (body) => ({
+  // `requestedBy` wajib di database, jadi jangan pernah kirim null.
+  toCreate: (body, auth) => ({
     date: body.date ? new Date(body.date) : new Date(),
     category: body.category || 'Others',
     itemCode: body.itemCode || null,
@@ -24,9 +35,9 @@ const handlers = buildCrudHandlers({
     outQty: toInt(body.outQty, 1),
     note: body.note || null,
     status: body.status || 'Pending',
-    requestedBy: body.requestedBy || null,
+    requestedBy: requestedByOf(body, auth),
   }),
-  toUpdate: (body) => ({
+  toUpdate: (body, auth) => ({
     ...(body.date ? { date: new Date(body.date) } : {}),
     category: body.category,
     itemCode: body.itemCode ?? null,
@@ -35,6 +46,9 @@ const handlers = buildCrudHandlers({
     note: body.note ?? null,
     ...(body.status ? { status: body.status } : {}),
     ...(body.approvedBy !== undefined ? { approvedBy: body.approvedBy } : {}),
+    ...(body.requestedBy !== undefined
+      ? { requestedBy: requestedByOf(body, auth) }
+      : {}),
   }),
 });
 

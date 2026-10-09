@@ -28,9 +28,12 @@ export default function StockOutPage() {
       description="Pengeluaran barang dari gudang beserta quantity dan pemohonnya."
       icon={PackageOpen}
       endpoint="/api/stock-out-transactions"
+      createFeature="transaction_stockout"
+      updateFeature="transaction_stockout"
+      deleteFeature="transaction_stockout"
       statusKey="status"
       statusOptions={STATUS}
-      searchPlaceholder="Cari nama barang, kategori, atau pemohon…"
+      searchPlaceholder="Cari nama barang, kategori, atau pemohon..."
       emptyTitle="Belum ada pengeluaran stok"
       emptyDescription="Catat setiap pengeluaran barang agar saldo inventori selalu akurat."
       rowLabel={(r) => r.itemName}

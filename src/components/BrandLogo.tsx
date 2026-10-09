@@ -6,11 +6,11 @@ import { cn } from '@/lib/utils';
 /**
  * Sumber logo perusahaan (item 1).
  *
- * Rantai fallback — dipakai berurutan, yang pertama berhasil menang:
- *   1. /pict/xh_logo_1.png  — aset PNG asli, bila perusahaan mengunggahkannya
- *   2. /pict/xh_logo.svg    — aset vektor bawaan repository
- *   3. <LogoMark />          — SVG inline (tidak butuh request sama sekali)
- *   4. wordmark teks         — selalu tampil, tidak pernah kosong
+ * Rantai fallback - dipakai berurutan, yang pertama berhasil menang:
+ *   1. /pict/xh_logo_1.png  - aset PNG asli, bila perusahaan mengunggahkannya
+ *   2. /pict/xh_logo.svg    - aset vektor bawaan repository
+ *   3. <LogoMark />          - SVG inline (tidak butuh request sama sekali)
+ *   4. wordmark teks         - selalu tampil, tidak pernah kosong
  *
  * Semua path diambil dari konstanta di `src/lib/config.ts`, tidak di-hardcode
  * di banyak tempat.
@@ -24,7 +24,7 @@ export const LOGO_FALLBACK = '/pict/xh_logo.svg';
 export const COMPANY_NAME = 'Xinghao';
 export const COMPANY_FULL_NAME = 'Xinghao ITIS';
 
-/** Logo sebagai komponen React — tidak bergantung pada file statis. */
+/** Logo sebagai komponen React - tidak bergantung pada file statis. */
 export function LogoMark({
   size = 32,
   className,
@@ -90,13 +90,15 @@ export function BrandLogo({
   className?: string;
   subtitle?: string;
 }) {
-  // '' = gunakan inline, selain itu = path file statis
-  const [src, setSrc] = useState<string | null>(null);
+  // '' = pakai inline SVG (default, langsung tampil tanpa menunggu request)
+  const [src, setSrc] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
+    // Tampilkan logo vektor lebih dulu agar tidak pernah kosong, lalu
+    // tingkatkan ke PNG asli bila asetnya memang ada di server.
     probePrimaryAsset().then((result) => {
-      if (!cancelled) setSrc(result || LOGO_FALLBACK);
+      if (!cancelled && result) setSrc(result);
     });
     return () => {
       cancelled = true;
@@ -111,9 +113,6 @@ export function BrandLogo({
   const mark: React.ReactNode =
     src === '' ? (
       <LogoMark size={size} />
-    ) : src === null ? (
-      // Placeholder dengan ukuran sama supaya layout tidak bergeser saat pengecekan.
-      <span style={{ width: size, height: size }} aria-hidden />
     ) : (
       // eslint-disable-next-line @next/next/no-img-element
       <img

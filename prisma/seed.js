@@ -321,6 +321,69 @@ const DIVISIONS = [
   { code: 'MARKETING', name: 'Marketing Division' },
 ];
 
+/**
+ * Muat data master dari `prisma/data/*.json`.
+ *
+ * Idempotent (upsert) sehingga `db:seed` bisa dijalankan berkali-kali tanpa
+ * menggandakan data. Hanya mengisi tabel yang masih kosong, jadi data yang
+ * sudah dibuat user lewat UI tidak tertimpa.
+ */
+async function seedMasterData() {
+  const fs = require('fs');
+  const path = require('path');
+  const dir = path.join(__dirname, 'data');
+  const read = (name) => {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) return [];
+    try {
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error(`  Gagal membaca ${name}: ${e.message}`);
+      return [];
+    }
+  };
+
+  // --- Master Vendor (dipakai dropdown di form Pengajuan Headset) ---
+  const vendors = read('master_vendors.json');
+  if (vendors.length && (await prisma.masterVendor.count()) === 0) {
+    for (const v of vendors) {
+      await prisma.masterVendor.upsert({
+        where: { code: v.code },
+        update: {},
+        create: {
+          code: v.code,
+          name: v.name,
+          contactPerson: v.contactPerson ?? null,
+          phone: v.phone ?? null,
+          email: v.email ?? null,
+          status: v.status || 'Active',
+        },
+      });
+    }
+    console.log(`Seeded ${vendors.length} master vendor.`);
+  }
+
+  // --- Master Item (katalog Accessories untuk pengajuan headset) ---
+  const items = read('master_items.json');
+  if (items.length && (await prisma.masterItem.count()) === 0) {
+    for (const it of items) {
+      await prisma.masterItem.upsert({
+        where: { code: it.code },
+        update: {},
+        create: {
+          code: it.code,
+          namaItem: it.namaItem,
+          typeItem: it.typeItem,
+          brand: it.brand ?? null,
+          price: it.price ?? null,
+        },
+      });
+    }
+    console.log(`Seeded ${items.length} master item.`);
+  }
+}
+
 async function main() {
   console.log('Seeding database...');
 
@@ -377,6 +440,12 @@ async function main() {
     });
   }
   console.log(`Seeded ${users.length} users.`);
+
+  // 4. Seed master data (vendor & item).
+  //    WAJIB: form Pengajuan Headset memakai DROPDOWN vendor dari Master
+  //    Vendor (item 6). Tanpa data ini dropdownnya kosong dan pengajuan
+  //    tidak bisa dibuat di instalasi baru.
+  await seedMasterData();
 
   console.log('Seed complete.');
   console.log('\nDefault login credentials:');

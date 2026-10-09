@@ -214,7 +214,7 @@ export default function UsersPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={setSearch} placeholder="Cari username atau nama…" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari username atau nama..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -261,7 +261,7 @@ export default function UsersPage() {
           </Field>
           <Field label="Divisi" required error={errors.divisionId}>
             <select className="xh-select" value={form.divisionId} onChange={(e) => setForm({ ...form, divisionId: e.target.value })}>
-              <option value="">— Pilih divisi —</option>
+              <option value="">- Pilih divisi -</option>
               {divisions.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name} ({d.code})
@@ -271,7 +271,7 @@ export default function UsersPage() {
           </Field>
           <Field label="Role" required error={errors.roleId}>
             <select className="xh-select" value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}>
-              <option value="">— Pilih role —</option>
+              <option value="">- Pilih role -</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} ({r.code})

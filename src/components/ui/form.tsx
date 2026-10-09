@@ -28,20 +28,40 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // PENTING: onClose sering dibuat inline di halaman, jadi identitasnya
+  // berubah tiap render. Simpan di ref supaya efek di bawah TIDAK ikut
+  // re-run - kalau i refocus tiap render, fokus/input akan ter steal setiap
+  // kali pengguna mengetik satu karakter.
+  const onCloseRef = useRef(onClose);
   useEffect(() => {
-    if (!open) return;
+    onCloseRef.current = onClose;
+  });
+
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      wasOpen.current = false;
+      return;
+    }
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    ref.current?.focus();
+
+    // Fokuskan dialog HANYA saat baru dibuka, bukan tiap render.
+    if (!wasOpen.current) {
+      wasOpen.current = true;
+      ref.current?.focus();
+    }
+
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -6,7 +6,7 @@ import { toInt } from '@/lib/documents';
 
 /**
  * Daftar item Headset berstatus Damage setelah pengembalian (item 11).
- * Damage tidak menambah stok inventori — hanya tercatat di sini.
+ * Damage tidak menambah stok inventori - hanya tercatat di sini.
  */
 export async function GET(req: NextRequest) {
   const authError = await requirePermission(req, 'transaction_headset', 'read');

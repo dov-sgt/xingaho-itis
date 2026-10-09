@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError } from '@/lib/api';
@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 /**
  * Import data Headset User dari Excel/CSV.
  *
- * Format kolom didefinisikan di `src/lib/headset-template.ts` — sumber yang sama
+ * Format kolom didefinisikan di `src/lib/headset-template.ts` - sumber yang sama
  * dipakai oleh endpoint template (item 7), sehingga template yang diunduh
  * selalu bisa langsung di-import tanpa error.
  */

@@ -7,7 +7,7 @@ import { isSuperAdmin } from '@/lib/rbac';
 import { DEFAULT_PAGE_SIZE, LOW_STOCK_THRESHOLD } from '@/lib/config';
 
 /**
- * Dashboard — Konten berbeda per divisi.
+ * Dashboard - Konten berbeda per divisi.
  *
  * Divisi & role selalu dibaca dari SESSION (database), bukan dari parameter URL,
  * sehingga user tidak bisa membuka dashboard divisi lain hanya dengan
@@ -63,20 +63,20 @@ export async function GET(req: NextRequest) {
 }
 
 /* ================================================================== */
-/* IT — inventaris, headset, procurement                              */
+/* IT - inventaris, headset, procurement                              */
 /* ================================================================== */
 
 async function buildIt(page: number, pageSize: number) {
   const [
-    totalMasterItems, totalVendors, totalTransactions,
+    totalMasterItems, totalVendors,
     pendingLoans, activeLoans, goodLoans, damagedLoans,
-    activeDeposits, totalPR, pendingPR, spending,
+    activeDeposits, totalPR, pendingPR,
     pendingSubmissions, openDeliveries, lowStockCount,
     damagedTotal, stockRows, totalStocks,
+    pendingBookings, totalBookings, totalSubmissions,
   ] = await Promise.all([
     prisma.masterItem.count(),
     prisma.masterVendor.count(),
-    prisma.transactionItem.count(),
     prisma.transactionItem.count({ where: { status: 'Pending' } }),
     prisma.transactionItem.count({ where: { status: 'Used' } }),
     prisma.transactionItem.count({ where: { status: 'Good' } }),
@@ -84,7 +84,6 @@ async function buildIt(page: number, pageSize: number) {
     prisma.transactionItem.aggregate({ where: { status: 'Used' }, _sum: { deposit: true } }),
     prisma.purchaseRequest.count(),
     prisma.purchaseRequest.count({ where: { status: 'Pending' } }),
-    prisma.purchaseRequest.aggregate({ _sum: { grandTotal: true, totalPrice: true } }),
     prisma.vendorSubmission.count({ where: { status: 'Pending' } }),
     prisma.deliveryOrder.count({ where: { status: { in: ['Pending', 'Partial'] } } }),
     prisma.inventoryStock.count({ where: { currentStock: { lt: LOW_STOCK_THRESHOLD } } }),
@@ -96,6 +95,9 @@ async function buildIt(page: number, pageSize: number) {
       select: { id: true, itemCode: true, itemName: true, category: true, currentStock: true, updatedAt: true },
     }),
     prisma.inventoryStock.count(),
+    prisma.booking.count({ where: { status: 'Pending' } }),
+    prisma.booking.count(),
+    prisma.vendorSubmission.count(),
   ]);
 
   return {
@@ -105,13 +107,15 @@ async function buildIt(page: number, pageSize: number) {
       { key: 'activeLoans', label: 'Headset Digunakan', value: activeLoans, tone: 'info', icon: 'headphones', hint: `Deposit ${fmt(activeDeposits._sum.deposit ?? 0)}` },
       { key: 'damagedTotal', label: 'Unit Damage', value: damagedTotal._sum.qty ?? 0, tone: 'danger', icon: 'alert', hint: 'Tidak menambah stok' },
       { key: 'totalPR', label: 'Purchase Request', value: totalPR, tone: 'primary', icon: 'cart', hint: `${pendingPR} menunggu approval` },
-      { key: 'totalSpending', label: 'Nilai Pengadaan', value: spending._sum.grandTotal ?? spending._sum.totalPrice ?? 0, tone: 'success', icon: 'wallet', money: true },
-      { key: 'openDeliveries', label: 'DO Berjalan', value: openDeliveries, tone: 'warning', icon: 'truck', hint: 'Pending / Partial' },
+      // Permintaan: nilai procured & vendor tidak lagi ditampilkan; diganti
+      // booking asset pending + pengajuan headset pending.
+      { key: 'pendingBookings', label: 'Booking Asset Pending', value: pendingBookings, tone: 'warning', icon: 'calendar', hint: `dari ${totalBookings} booking` },
+      { key: 'pendingSubmissions', label: 'Pengajuan Headset Pending', value: pendingSubmissions, tone: 'warning', icon: 'clipboard', hint: `dari ${totalSubmissions} pengajuan` },
       { key: 'lowStockCount', label: 'Stok Menipis', value: lowStockCount, tone: 'danger', icon: 'trending', hint: `Stok < ${LOW_STOCK_THRESHOLD}` },
     ],
     summary: [
-      { key: 'pendingSubmissions', label: 'Pengajuan menunggu approval', value: pendingSubmissions, tone: 'warning', feature: 'vendor_submission', href: '/transactions/vendor-submissions' },
-      { key: 'pendingPR', label: 'Purchase Request pending', value: pendingPR, tone: 'primary', feature: 'purchase_request', href: '/transactions/purchase-requests' },
+      { key: 'pendingSubmissions', label: 'Pengajuan headset menunggu approval', value: pendingSubmissions, tone: 'warning', feature: 'vendor_submission', href: '/transactions/vendor-submissions' },
+      { key: 'pendingBookings', label: 'Booking asset menunggu approval', value: pendingBookings, tone: 'warning', feature: 'booking', href: '/bookings' },
       { key: 'openDeliveries', label: 'Delivery Order berjalan', value: openDeliveries, tone: 'info', feature: 'delivery_order', href: '/transactions/delivery-orders' },
     ],
     lifecycle: [
@@ -141,7 +145,7 @@ async function buildIt(page: number, pageSize: number) {
 }
 
 /* ================================================================== */
-/* OPS — nasabah, remarks, payment achievement                          */
+/* OPS - nasabah, remarks, payment achievement                          */
 /* ================================================================== */
 
 async function buildOps(page: number, pageSize: number) {
@@ -202,7 +206,7 @@ async function buildOps(page: number, pageSize: number) {
         name: r.nasabah?.nama ?? '-',
         code: r.nasabah?.nik ?? '-',
         sub: (r.remark || '').slice(0, 60),
-        value: r.promiseToPay ? (r.promiseDate ? new Date(r.promiseDate).toISOString().slice(0, 10) : 'Ada') : '—',
+        value: r.promiseToPay ? (r.promiseDate ? new Date(r.promiseDate).toISOString().slice(0, 10) : 'Ada') : '-',
         updatedAt: r.createdAt,
         isLow: r.promiseToPay,
       })),
@@ -212,7 +216,7 @@ async function buildOps(page: number, pageSize: number) {
 }
 
 /* ================================================================== */
-/* QC — findings & recording review                                    */
+/* QC - findings & recording review                                    */
 /* ================================================================== */
 
 async function buildQc(page: number, pageSize: number) {
@@ -277,7 +281,7 @@ async function buildQc(page: number, pageSize: number) {
 }
 
 /* ================================================================== */
-/* HR — karyawan & cuti                                                */
+/* HR - karyawan & cuti                                                */
 /* ================================================================== */
 
 async function buildHr(page: number, pageSize: number) {
@@ -336,7 +340,7 @@ async function buildHr(page: number, pageSize: number) {
         id: e.id,
         name: e.name,
         code: e.nik,
-        sub: `${e.department} · ${e.position}`,
+        sub: `${e.department} - ${e.position}`,
         value: e.employeeCode,
         updatedAt: e.joinDate,
         isLow: e.status !== 'Active',

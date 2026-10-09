@@ -34,7 +34,7 @@ export default function ProjectorBookingsPage() {
       deleteFeature="booking"
       statusKey="status"
       statusOptions={STATUS_OPTIONS}
-      searchPlaceholder="Cari kode booking, peminjam, atau lokasi…"
+      searchPlaceholder="Cari kode booking, peminjam, atau lokasi..."
       emptyTitle="Belum ada booking projector"
       emptyDescription="Catat peminjaman projector agar tidak terjadi bentrok jadwal."
       rowLabel={(r) => r.bookingCode}
@@ -62,12 +62,12 @@ export default function ProjectorBookingsPage() {
               <p className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 {formatDate(r.startDate)}
-                {r.endDate && r.endDate !== r.startDate ? ` – ${formatDate(r.endDate)}` : ''}
+                {r.endDate && r.endDate !== r.startDate ? ` - ${formatDate(r.endDate)}` : ''}
               </p>
               <p className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {r.startTime ?? '-'}
-                {r.endTime ? ` – ${r.endTime}` : ''}
+                {r.endTime ? ` - ${r.endTime}` : ''}
               </p>
             </div>
           ),

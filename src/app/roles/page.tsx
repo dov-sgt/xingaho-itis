@@ -222,13 +222,13 @@ export default function RolesPage() {
         <Info className="mt-px h-4 w-4 shrink-0" />
         <p>
           Role <strong>SUPERADMIN</strong> otomatis memiliki akses penuh tanpa perlu mencentang. Perubahan izin
-          langsung diterapkan pada server — menu yang hilang di sidebar akan ditolak API-nya juga dengan 403.
+          langsung diterapkan pada server - menu yang hilang di sidebar akan ditolak API-nya juga dengan 403.
         </p>
       </div>
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={setSearch} placeholder="Cari nama atau kode role…" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari nama atau kode role..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
@@ -248,7 +248,7 @@ export default function RolesPage() {
       <Modal
         open={!!matrixOpen}
         onClose={() => !saving && setMatrixOpen(null)}
-        title={`Izin Role · ${matrixOpen?.name ?? ''}`}
+        title={`Izin Role - ${matrixOpen?.name ?? ''}`}
         description="Centang izin yang dimiliki role pada setiap modul."
         size="xl"
         footer={
@@ -335,7 +335,7 @@ export default function RolesPage() {
         }
       >
         <form onSubmit={createRole} className="space-y-3">
-          <Field label="Kode Role" required error={errors.code} hint="Contoh: OPS_SPV → tersimpan sebagai OPS_SPV">
+          <Field label="Kode Role" required error={errors.code} hint="Contoh ketik: OPS SPV, otomatis tersimpan sebagai OPS_SPV">
             <input
               className="xh-input font-mono"
               value={form.code}

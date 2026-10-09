@@ -146,7 +146,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Kop cetak — hanya tampil saat print */}
+      {/* Kop cetak - hanya tampil saat print */}
       <div className="print-only mb-3 border-b border-black pb-2">
         <div className="flex items-center gap-3">
           <BrandLogoForPrint size={48} />
@@ -161,7 +161,7 @@ export default function ReportsPage() {
         <PageHeader
           icon={BarChart3}
           title="Reporting"
-          description={`Rekap data sesuai divisi — ${isSuperAdmin ? 'seluruh divisi' : division ?? '-'}. Semua hasil unduhan memuat logo perusahaan.`}
+          description={`Rekap data sesuai divisi - ${isSuperAdmin ? 'seluruh divisi' : division ?? '-'}. Semua hasil unduhan memuat logo perusahaan.`}
           actions={
             <>
               <button className="xh-btn xh-btn-secondary" onClick={() => download('csv')} disabled={!rows.length || exporting}>
@@ -212,7 +212,7 @@ export default function ReportsPage() {
 
             <Panel padded={false}>
               <Toolbar>
-                <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari data pada laporan…" />
+                <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari data pada laporan..." />
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -270,7 +270,7 @@ export default function ReportsPage() {
 
       <div className="print-only">
         <p style={{ fontSize: '9pt' }}>
-          {type ? REPORT_LABELS[type] : 'Laporan'} — {isSuperAdmin ? 'Semua divisi' : division} · Dicetak oleh{' '}
+          {type ? REPORT_LABELS[type] : 'Laporan'} - {isSuperAdmin ? 'Semua divisi' : division} - Dicetak oleh{' '}
           {user?.name ?? '-'} pada {formatDate(new Date())}
         </p>
         <p style={{ fontSize: '8pt', marginTop: '4px' }}>{COPYRIGHT_TEXT}</p>

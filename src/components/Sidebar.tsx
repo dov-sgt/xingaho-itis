@@ -138,7 +138,7 @@ export default function Sidebar({
         <div className="shrink-0 border-b border-sidebar-border px-4 py-2.5">
           <p className="truncate text-[12px] font-semibold text-sidebar-foreground">{user.name}</p>
           <p className="mt-0.5 truncate text-[10.5px] text-sidebar-muted">
-            {user.roleName} · {user.division}
+            {user.roleName} - {user.division}
           </p>
         </div>
       )}
@@ -186,7 +186,7 @@ export default function Sidebar({
         <footer className="shrink-0 border-t border-sidebar-border px-4 py-2.5">
           <p className="truncate text-[10.5px] font-semibold text-sidebar-foreground/70">{COMPANY_LEGAL_NAME}</p>
           <p className="truncate text-[9.5px] text-sidebar-muted/60">
-            © {new Date().getFullYear()} · Hak cipta dilindungi
+            (c) {new Date().getFullYear()} - Hak cipta dilindungi
           </p>
         </footer>
       )}

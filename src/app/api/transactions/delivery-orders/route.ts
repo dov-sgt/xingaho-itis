@@ -45,12 +45,12 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST — membuat Delivery Order.
+ * POST - membuat Delivery Order.
  *
  * Dua jalur yang didukung:
- *  1. Dari PR yang sudah Approved (`prId`) — memakai helper yang sama dengan
+ *  1. Dari PR yang sudah Approved (`prId`) - memakai helper yang sama dengan
  *     alur approve, jadi idempoten dan tidak pernah duplikat.
- *  2. Manual (tanpa `prId`) — tetap butuh izin `delivery_order:create`.
+ *  2. Manual (tanpa `prId`) - tetap butuh izin `delivery_order:create`.
  */
 export async function POST(req: NextRequest) {
   const authError = await requirePermission(req, 'delivery_order', 'create');
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** PUT — hanya untuk penerimaan barang (Received / Partial). */
+/** PUT - hanya untuk penerimaan barang (Received / Partial). */
 export async function PUT(req: NextRequest) {
   const authError = await requirePermission(req, 'delivery_order', 'update');
   if (authError) return authError;
@@ -185,7 +185,7 @@ export async function PUT(req: NextRequest) {
             stock: target.currentStock + doOrder.qtyOrdered,
             inQty: doOrder.qtyOrdered,
             outQty: 0,
-            note: `[DO Received] ${doOrder.doNumber} · ${doOrder.itemName}: ${doOrder.qtyOrdered} unit`,
+            note: `[DO Received] ${doOrder.doNumber} - ${doOrder.itemName}: ${doOrder.qtyOrdered} unit`,
             updateBy: recipient || 'Staff IT',
           },
         });

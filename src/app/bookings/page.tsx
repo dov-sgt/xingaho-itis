@@ -34,7 +34,7 @@ export default function BookingsPage() {
       deleteFeature="booking"
       statusKey="status"
       statusOptions={BOOKING_STATUSES}
-      searchPlaceholder="Cari kode booking, peminjam, aset, atau lokasi…"
+      searchPlaceholder="Cari kode booking, peminjam, aset, atau lokasi..."
       emptyTitle="Belum ada booking aset"
       emptyDescription="Catat peminjaman aset agar tidak terjadi bentrok jadwal antar divisi."
       rowLabel={(r) => r.bookingCode}
@@ -58,12 +58,12 @@ export default function BookingsPage() {
               <p className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 {formatDate(r.startDate)}
-                {r.endDate && r.endDate !== r.startDate ? ` – ${formatDate(r.endDate)}` : ''}
+                {r.endDate && r.endDate !== r.startDate ? ` - ${formatDate(r.endDate)}` : ''}
               </p>
               <p className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {r.startTime ?? '-'}
-                {r.endTime ? ` – ${r.endTime}` : ''}
+                {r.endTime ? ` - ${r.endTime}` : ''}
               </p>
             </div>
           ),

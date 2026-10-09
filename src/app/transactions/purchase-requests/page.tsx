@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -293,7 +293,7 @@ export default function PurchaseRequestsPage() {
               disabled={busyStatus === r.id}
               className="xh-select h-8 w-[104px] text-[11.5px]"
             >
-              <option value="">Ubahâ€¦</option>
+              <option value="">Ubah...</option>
               {(TRANSITIONS[r.status] ?? []).map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -344,7 +344,7 @@ export default function PurchaseRequestsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nomor PR, item, atau pemohonâ€¦" />
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nomor PR, item, atau pemohon..." />
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="xh-select w-[170px]" aria-label="Filter status">
             <option value="">Semua status</option>
             {STATUS_OPTIONS.map((s) => (
@@ -449,7 +449,7 @@ export default function PurchaseRequestsPage() {
                         <datalist id="pr-catalog">
                           {catalog.map((c) => (
                             <option key={c.code} value={c.namaItem}>
-                              {c.code} â€” {c.brand}
+                              {c.code} - {c.brand}
                             </option>
                           ))}
                         </datalist>
@@ -489,7 +489,7 @@ export default function PurchaseRequestsPage() {
             </div>
           </div>
 
-          {/* Ringkasan biaya â€” sticky */}
+          {/* Ringkasan biaya - sticky */}
           <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
             <Field label="Detail / Spesifikasi" htmlFor="pr-details" className="self-start">
               <textarea
@@ -497,7 +497,7 @@ export default function PurchaseRequestsPage() {
                 className="xh-input h-auto min-h-[92px] py-2"
                 value={form.details}
                 onChange={(e) => setForm({ ...form, details: e.target.value })}
-                placeholder="Spesifikasi teknis atau keterangan tambahanâ€¦"
+                placeholder="Spesifikasi teknis atau keterangan tambahan..."
               />
             </Field>
 
@@ -523,7 +523,7 @@ export default function PurchaseRequestsPage() {
                   <dd className="text-lg font-bold tabular-nums text-primary-subtle-foreground">{formatRupiah(totals.grandTotal)}</dd>
                 </div>
                 <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-                  Grand Total = Total Price + Shipment Cost âˆ’ Discount. Nilai final dihitung ulang oleh server saat
+                  Grand Total = Total Price + Shipment Cost - Discount. Nilai final dihitung ulang oleh server saat
                   disimpan.
                 </p>
               </dl>
@@ -598,7 +598,7 @@ export default function PurchaseRequestsPage() {
             <div className="ml-auto max-w-sm space-y-1.5 rounded-lg border border-border bg-surface-raised p-3.5">
               <SummaryRow label="Total Price" value={formatRupiah(detail.totalPrice)} />
               <SummaryRow label="Shipment Cost" value={formatRupiah(detail.shipmentCost)} />
-              <SummaryRow label="Discount" value={`âˆ’ ${formatRupiah(detail.diskon)}`} />
+              <SummaryRow label="Discount" value={`- ${formatRupiah(detail.diskon)}`} />
               <div className="mt-1.5 flex items-center justify-between border-t border-border pt-2">
                 <span className="text-[12.5px] font-bold text-foreground">Grand Total</span>
                 <span className="text-[15px] font-bold tabular-nums text-primary">{formatRupiah(detail.grandTotal || detail.totalPrice)}</span>

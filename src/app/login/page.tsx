@@ -56,7 +56,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Simpan profil sesi asli dari server — BUKAN user default apa pun.
+      // Simpan profil sesi asli dari server - BUKAN user default apa pun.
       login(result as UserSession);
       toast('success', `Selamat datang, ${result.name}`);
       router.replace('/dashboard');
@@ -190,7 +190,7 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Memproses…
+                  Memproses...
                 </>
               ) : (
                 <>

@@ -15,7 +15,7 @@ export async function nextNumber(
   let n = count + 1;
 
   // Hindari nomor duplikat bila ada bari yang sudah terhapus.
-  // (max 20 kali percobaan — cukup untuk kondisi realistis)
+  // (max 20 kali percobaan - cukup untuk kondisi realistis)
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = `${prefix}-${year}-${String(n).padStart(pad, '0')}`;
     const clash =
@@ -85,7 +85,7 @@ export function round2(n: number): number {
 
 /**
  * True HANYA jika nilai benar-benar terisi DAN negatif.
- * Nilai kosong / undefined dianggap "tidak diisi", bukan negatif — inilah
+ * Nilai kosong / undefined dianggap "tidak diisi", bukan negatif - inilah
  * perbedaan penting dari memakai `toNumber(v, -1) < 0`.
  */
 export function isNegative(value: unknown): boolean {

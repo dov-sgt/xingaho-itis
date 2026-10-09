@@ -2,7 +2,7 @@
  * Generator logo PNG (`public/pict/xh_logo_1.png`).
  *
  * Menggambar monogram "XH" dengan latar rounded-rect bergradien indigo memakai
- * fungsi jarak bertanda (signed distance function) — tanpa dependensi gambar
+ * fungsi jarak bertanda (signed distance function) - tanpa dependensi gambar
  * eksternal, hasilnya deterministik dan tajam di ukuran berapa pun.
  *
  * Jalankan:  node scripts/generate-logo.js
@@ -77,7 +77,7 @@ const X_A = [64, 84];
 const X_MID = [108, 128];
 const X_B = [64, 172];
 
-// Huruf H — dipisah jauh dari X supaya tidak bertabrakan
+// Huruf H - dipisah jauh dari X supaya tidak bertabrakan
 const H_LEFT = 150;
 const H_RIGHT = 196;
 const H_TOP = 84;
@@ -113,7 +113,7 @@ for (let y = 0; y < SIZE; y++) {
     const aRect = clamp01(0.5 - dRect);
     if (aRect <= 0) continue;
 
-    // Gradien diagonal indigo: terang di kiri atas → gelap di kanan bawah
+    // Gradien diagonal indigo: terang di kiri atas -> gelap di kanan bawah
     const t = clamp01((fx / SIZE) * 0.45 + (fy / SIZE) * 0.55);
     let r = lerp(99, 44, t);
     let g = lerp(91, 41, t);

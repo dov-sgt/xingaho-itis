@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { destroySession, SESSION_COOKIE, getAuthContext } from '@/lib/session';
 
-/** Sesi saat ini — dipakai client untuk memastikan cookie masih valid. */
+/** Sesi saat ini - dipakai client untuk memastikan cookie masih valid. */
 export async function GET(req: NextRequest) {
   const auth = await getAuthContext(req);
   if (!auth) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Logout — hapus sesi di server dan kosongkan cookie. */
+/** Logout - hapus sesi di server dan kosongkan cookie. */
 export async function DELETE(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value ?? req.headers.get('x-session');
   await destroySession(token);

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission, getAuthContext } from '@/lib/session';
 import { ok, badRequest, notFound, serverError, validationError } from '@/lib/api';
@@ -6,7 +6,7 @@ import { validateRequired, validateInt, collectErrors } from '@/lib/validation';
 import { toInt } from '@/lib/documents';
 
 /**
- * Stock In — penerimaan barang yang menambah ready stock.
+ * Stock In - penerimaan barang yang menambah ready stock.
  * Per movements: update stok + catat histori dilakukan dalam SATU transaksi
  * database agar tidak ada keadaan setengah jalan.
  */

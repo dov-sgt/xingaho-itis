@@ -35,9 +35,12 @@ export default function FindingsPage() {
       description="Temuan quality control terhadap agen beserta severity dan tindakruhunya."
       icon={AlertTriangle}
       endpoint="/api/findings"
+      createFeature="finding"
+      updateFeature="finding"
+      deleteFeature="finding"
       statusKey="status"
       statusOptions={FINDING_STATUSES}
-      searchPlaceholder="Cari kode temuan, agen, atau deskripsi…"
+      searchPlaceholder="Cari kode temuan, agen, atau deskripsi..."
       emptyTitle="Belum ada temuan QC"
       emptyDescription="Temuan yang dicatat di sini menjadi bahan evaluasi kualitas layanan agen."
       rowLabel={(r) => r.findingCode}

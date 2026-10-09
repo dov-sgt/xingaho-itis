@@ -164,7 +164,7 @@ export default function DivisionsPage() {
 
       <Panel padded={false}>
         <Toolbar>
-          <SearchInput value={search} onChange={setSearch} placeholder="Cari kode atau nama divisi…" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari kode atau nama divisi..." />
         </Toolbar>
         <div className="p-3 sm:p-4">
           {loading ? (
