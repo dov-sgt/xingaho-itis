@@ -57,8 +57,8 @@ export const QC_NAV: NavItem[] = [
 
 export const HR_NAV: NavItem[] = [
   { title: 'Dashboard', path: '/dashboard', feature: 'dashboard', icon: LayoutDashboard },
-  { title: 'Employee Data', path: '/hr/employees', feature: 'user_management', icon: Briefcase },
-  { title: 'Leave Request', path: '/hr/leave-requests', feature: 'user_management', icon: CalendarOff },
+  { title: 'Employee Data', path: '/hr/employees', feature: 'employee_data', icon: Briefcase },
+  { title: 'Leave Request', path: '/hr/leave-requests', feature: 'leave_request', icon: CalendarOff },
   { title: 'User Management', path: '/users', feature: 'user_management', icon: Users },
   { title: 'Reporting', path: '/reports', feature: 'reporting', icon: BarChart3 },
 ];

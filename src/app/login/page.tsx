@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, UserSession } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -22,8 +22,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const { toast } = useToast();
+
+  // Pesan khusus bila user sengaja dikeluarkan karena sesi berakhir / cookie hilang.
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session-ended') {
+      setError('Sesi Anda sudah berakhir atau telah keluar. Silakan login kembali.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

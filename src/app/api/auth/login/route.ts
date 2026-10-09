@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       permissions: coercePermissions(user.role.permissions),
     });
 
-    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(request));
     return res;
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

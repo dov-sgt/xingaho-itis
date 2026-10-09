@@ -131,13 +131,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
       }
-      return fetch(url, {
-        ...options,
-        headers,
-        credentials: 'same-origin',
-      });
+      const res = await fetch(url, { ...options, headers, credentials: 'same-origin' });
+
+      // Sesi berakhir / cookie hilang -> langsung keluarkan user ke /login
+      // supaya tidak muncul error "sesi berakhir" berulang di tiap panel.
+      if (res.status === 401 && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        setUser(null);
+        try {
+          localStorage.removeItem('itis_user');
+          localStorage.setItem('itis_user_logout', String(Date.now()));
+        } catch {
+          /* ignore */
+        }
+        router.replace('/login?reason=session-ended');
+      }
+
+      return res;
     },
-    [],
+    [router],
   );
 
   const value = useMemo<AuthContextType>(

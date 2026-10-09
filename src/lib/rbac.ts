@@ -41,6 +41,8 @@ export const FEATURES = [
   'log_ruang_server',
   'recording_review',
   'finding',
+  'employee_data',
+  'leave_request',
   'user_management',
   'division_management',
   'role_management',
@@ -59,6 +61,12 @@ export const FEATURE_ALIASES: Record<string, Feature> = {
   headset_user: 'transaction_headset',
   stock_out: 'transaction_stockout',
   users: 'user_management',
+  // Modul HR dulu memakai `user_management`; dipetakan ke feature baru supaya
+  // HR bisa mengelola data karyawan tanpa ikut mendapat akses ke akun sistem.
+  employees: 'employee_data',
+  employee: 'employee_data',
+  leave: 'leave_request',
+  leave_requests: 'leave_request',
 };
 
 export function normalizeFeature(feature: string): Feature {

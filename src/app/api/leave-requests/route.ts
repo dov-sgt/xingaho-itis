@@ -6,7 +6,7 @@ const STATUS = LEAVE_STATUSES;
 
 const handlers = buildCrudHandlers({
   model: 'leaveRequest',
-  feature: 'user_management',
+  feature: 'leave_request',
   searchFields: ['requestCode', 'reason', 'leaveType'],
   statusField: 'status',
   dateField: 'startDate',

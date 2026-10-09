@@ -50,9 +50,9 @@ export default function LeaveRequestsPage() {
       description="Pengajuan cuti dan izin karyawan. Persetujuan dicatat beserta nama pemberi izin."
       icon={CalendarOff}
       endpoint="/api/leave-requests"
-      createFeature="user_management"
-      updateFeature="user_management"
-      deleteFeature="user_management"
+      createFeature="leave_request"
+      updateFeature="leave_request"
+      deleteFeature="leave_request"
       statusKey="status"
       statusOptions={LEAVE_STATUSES}
       searchPlaceholder="Cari kode, alasan, atau tipe cuti…"

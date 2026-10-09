@@ -148,7 +148,8 @@ function requiredFeatureFor(pathname: string): string | null {
   if (pathname.startsWith('/log-ruang-server')) return 'log_ruang_server';
   if (pathname.startsWith('/qc/recording-reviews')) return 'recording_review';
   if (pathname.startsWith('/qc/findings')) return 'finding';
-  if (pathname.startsWith('/hr/')) return 'user_management';
+  if (pathname.startsWith('/hr/employees')) return 'employee_data';
+  if (pathname.startsWith('/hr/leave-requests')) return 'leave_request';
   if (pathname.startsWith('/reports')) return 'reporting';
   return null;
 }

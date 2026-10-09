@@ -45,6 +45,8 @@ Semua warna, tipografi, dan spacing berasal dari **CSS variable di `src/app/glob
 - **Sesi**: tabel `Session` (token disimpan sebagai SHA-256 hash). Setiap login menghapus sesi lama → rotasi token (anti session fixation).
 - **Logout**: `DELETE /api/auth/session`.
 - `GET /api/auth/session` untuk memulihkan sesi saat load.
+- **PENTING — flag `Secure` cookie:** mengikuti skema request (`isHttpsRequest`), **BUKAN** `NODE_ENV`. Produksi berjalan di HTTP biasa (`http://192.168.52.140:3005`); memakai `NODE_ENV === 'production'` membuat browser membuang cookie sehingga sesi selalu berakhir. Set `COOKIE_SECURE=true` hanya bila aplikasi diakses lewat HTTPS / reverse proxy.
+- `apiFetch()` otomatis mengarahkan ke `/login?reason=session-ended` saat menerima 401, sehingga user tidak melihat error "sesi berakhir" berulang di tiap panel.
 - **Client**: `src/context/AuthContext.tsx` menyimpan profil user hasil login (`UserSession`) di state + `localStorage: itis_user`. Cookie HttpOnly tetap menjadi kredensial otoritatif — JANGAN pernah menulis user default/anonim di sana.
 - **Server**: `src/lib/session.ts` menyediakan `getAuthContext`, `requireAuth`, `requirePermission`, `requireAnyPermission`, `requireSuperAdminPermission`.
 
@@ -56,6 +58,8 @@ Database adalah **satu-satunya sumber kebenaran** role & permission.
 - `User.roleId` → FK ke `Role`; `User.divisionId` → FK ke `Division`.
 - **JANGAN** menulis daftar role/permission hardcoded. `src/lib/rbac.ts` hanya berisi kosakata (daftar feature & action) + helper murni.
 - Feature key kanonik ada di `FEATURES` (`src/lib/rbac.ts`); `FEATURE_ALIASES` menjaga kompatibilitas (`transaction_item` → `transaction_headset`).
+- Feature `employee_data` & `leave_request` dipisahkan dari `user_management` dengan sengaja: HR boleh mengelola data karyawan/cuti **tanpa** mendapat akses ke akun sistem. Jangan menggabungkannya kembali.
+- Dashboard (`/api/dashboard`) kontennya berbeda per divisi dan divisi selalu dibaca dari **sesi**, bukan parameter URL. SuperAdmin boleh memakai `?division=IT|OPS|QC|HR`; user lain diabaikan.
 - Menu sidebar dan RouteGuard membaca dari `src/lib/navigation.ts` — sama persis dengan feature yang divalidasi backend.
 - Role `SUPERADMIN` otomatis lolos semua pengecekan.
 

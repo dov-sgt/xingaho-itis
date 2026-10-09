@@ -33,6 +33,8 @@ const FEATURE_LABELS: Record<string, string> = {
   log_ruang_server: 'Log Ruang Server',
   recording_review: 'Recording Review',
   finding: 'QC Findings',
+  employee_data: 'Employee Data',
+  leave_request: 'Leave Request',
   user_management: 'User Management',
   division_management: 'Division Management',
   role_management: 'Role Management',

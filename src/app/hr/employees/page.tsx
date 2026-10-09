@@ -27,9 +27,9 @@ export default function EmployeesPage() {
       description="Data induk karyawan HR: identitas, departemen, posisi, dan status kepegawaian."
       icon={Briefcase}
       endpoint="/api/employees"
-      createFeature="user_management"
-      updateFeature="user_management"
-      deleteFeature="user_management"
+      createFeature="employee_data"
+      updateFeature="employee_data"
+      deleteFeature="employee_data"
       statusKey="status"
       statusOptions={EMPLOYEE_STATUSES}
       searchPlaceholder="Cari kode, NIK, nama, atau departemen…"

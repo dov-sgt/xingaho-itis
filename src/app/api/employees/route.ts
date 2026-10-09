@@ -5,7 +5,7 @@ const STATUS = EMPLOYEE_STATUSES;
 
 const handlers = buildCrudHandlers({
   model: 'employee',
-  feature: 'user_management',
+  feature: 'employee_data',
   searchFields: ['employeeCode', 'nik', 'name', 'department', 'position'],
   statusField: 'status',
   validate: (body) => {

@@ -46,11 +46,29 @@ export function coercePermissions(raw: unknown): PermissionMap {
   return {};
 }
 
-export function sessionCookieOptions() {
+/**
+ * Flag `Secure` cookie harus mengikuti skema ASLI request, bukan `NODE_ENV`.
+ *
+ * Aplikasi ini produksi-nya berjalan di HTTP biasa (http://192.168.52.140:3005).
+ * Browser **menolak** menyimpan & mengirim cookie `Secure` lewat HTTP, sehingga
+ * memakai `NODE_ENV === 'production'` membuat session ikut terbuang di setiap
+ * request → "Sesi tidak valid atau sudah berakhir".
+ *
+ * `COOKIE_SECURE=true` untuk memaksa HTTPS (mis. di belakang reverse proxy).
+ */
+export function isHttpsRequest(req?: NextRequest): boolean {
+  if (process.env.COOKIE_SECURE === 'true') return true;
+  if (!req) return false;
+  const forwarded = req.headers.get('x-forwarded-proto');
+  if (forwarded) return forwarded.split(',')[0].trim() === 'https';
+  return req.nextUrl.protocol === 'https:';
+}
+
+export function sessionCookieOptions(req?: NextRequest) {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttpsRequest(req),
     path: '/',
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   };
@@ -161,12 +179,7 @@ export async function requirePermission(
 ): Promise<NextResponse | null> {
   const auth = await getAuthContext(req);
 
-  if (!auth) {
-    return NextResponse.json(
-      { error: 'Sesi tidak valid atau sudah berakhir. Silakan login kembali.' },
-      { status: 401 },
-    );
-  }
+  if (!auth) return sessionEndedResponse(null);
 
   if (!authHasPermission(auth, feature, action)) {
     return NextResponse.json(
@@ -188,6 +201,24 @@ export type RequireAuthResult =
   | { auth?: undefined; error: NextResponse };
 
 /**
+ * Pesan error 401 yang ramah.
+ * Bedakan "belum login" dari "sesi benar-benar habis" supaya UI tidak
+ * complained "sesi berakhir" padahal user sebenarnya belum pernah login.
+ */
+export function sessionEndedResponse(auth?: AuthContext | null): NextResponse {
+  const firstTime = !auth;
+  return NextResponse.json(
+    {
+      error: firstTime
+        ? 'Anda belum login. Silakan masuk terlebih dahulu.'
+        : 'Sesi Anda sudah berakhir. Silakan login kembali.',
+      code: firstTime ? 'NO_SESSION' : 'SESSION_EXPIRED',
+    },
+    { status: 401 },
+  );
+}
+
+/**
  * Guard yang menerima salah satu dari beberapa feature.
  * Dipakai untuk endpoint yang dibutuhkan lebih dari satu modul (mis. daftar
  * role/divisi yang dipakai oleh form User Management maupun Role Management).
@@ -197,9 +228,7 @@ export async function requireAnyPermission(
   options: { feature: string; action: Action }[],
 ): Promise<NextResponse | null> {
   const auth = await getAuthContext(req);
-  if (!auth) {
-    return NextResponse.json({ error: 'Sesi tidak valid atau sudah berakhir. Silakan login kembali.' }, { status: 401 });
-  }
+  if (!auth) return sessionEndedResponse(null);
 
   if (options.some((o) => authHasPermission(auth, o.feature, o.action))) return null;
 
@@ -215,14 +244,7 @@ export async function requireAnyPermission(
 
 export async function requireAuth(req: NextRequest): Promise<RequireAuthResult> {
   const auth = await getAuthContext(req);
-  if (!auth) {
-    return {
-      error: NextResponse.json(
-        { error: 'Sesi tidak valid atau sudah berakhir. Silakan login kembali.' },
-        { status: 401 },
-      ),
-    };
-  }
+  if (!auth) return { error: sessionEndedResponse(null) };
   return { auth };
 }
 
