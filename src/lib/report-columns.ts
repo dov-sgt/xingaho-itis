@@ -75,6 +75,8 @@ export const REPORT_COLUMNS: Record<string, ReportColumn[]> = {
     { key: 'date', header: 'Tanggal', type: 'date' },
     { key: 'title', header: 'Judul', type: 'text', width: 30 },
     { key: 'namaPembuat', header: 'Nama Pembuat', type: 'text' },
+    // Item 9: kolom vendor menampilkan NAMA vendor, bukan kodenya.
+    { key: 'vendorName', header: 'Vendor', type: 'text' },
     { key: 'category', header: 'Kategori', type: 'text' },
     { key: 'itemName', header: 'Item', type: 'text' },
     { key: 'proposedPrice', header: 'Estimasi', type: 'money' },

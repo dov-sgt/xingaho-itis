@@ -1,9 +1,41 @@
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+
+/**
+ * Nomor dokumen dengan counter ATOMIK (item 2).
+ *
+ * `nextNumber` di bawah memakai jumlah baris - tidak aman dipakai di dalam
+ * `$transaction` karena dua request bisa mendapat nomor sama. Fungsi ini
+ * memakai tabel `ItemCodeCounter` yang di-increment dengan `upsert`, jadi
+ * aman untuk pembuatan di dalam transaksi.
+ *
+ * `scope` diberi prefix 'DOC:' supaya tidak bentrok dengan scope kategori item
+ * pada tabel yang sama (mis. 'DOC:SRV' vs 'AC').
+ */
+export async function nextScopedNumber(
+  tx: Prisma.TransactionClient,
+  scope: string,
+  prefix: string,
+  pad = 3,
+  date: Date = new Date(),
+): Promise<string> {
+  const year = String(date.getFullYear()).slice(-2);
+  const row = await tx.itemCodeCounter.upsert({
+    where: { category_period: { category: `DOC:${scope}`, period: year } },
+    create: { category: `DOC:${scope}`, period: year, lastNumber: 1 },
+    update: { lastNumber: { increment: 1 } },
+    select: { lastNumber: true },
+  });
+  return `${prefix}-${year}-${String(row.lastNumber).padStart(pad, '0')}`;
+}
 
 /**
  * Sumber nomor dokumen. Menghindari balapan saat dua user membuat dokumen
  * di detik yang sama dengan mengambil counter berdasarkan jumlah baris.
+ *
+ * CATATAN: bukan transaction-safe. Untuk pembuatan di dalam `$transaction`
+ * gunakan `nextScopedNumber`.
  */
 export async function nextNumber(
   model: 'purchaseRequest' | 'deliveryOrder' | 'vendorSubmission' | 'transactionItem',

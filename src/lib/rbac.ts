@@ -106,6 +106,11 @@ export const ENDPOINT_FEATURE: Record<string, Feature> = {
   '/api/users': 'user_management',
   '/api/roles': 'role_management',
   '/api/divisions': 'division_management',
+  // Tahap 2
+  '/api/master/item-categories': 'master_item',
+  '/api/assets/laptops': 'inventory_type_item',
+  '/api/damaged-items': 'transaction_headset',
+  '/api/damaged-items/servis': 'servis_asset',
 };
 
 /** Feature key untuk sebuah endpoint API; null bila tidak terdaftar. */

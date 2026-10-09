@@ -85,6 +85,29 @@ export default function PurchaseRequestsPage() {
     diskon: 0,
   });
   const [lines, setLines] = useState<PrItem[]>([{ ...EMPTY_LINE }]);
+  /** Kategori katalog per baris (indeks sama dengan `lines`). Item 8. */
+  const [lineCategory, setLineCategory] = useState<string[]>(['']);
+
+  const catalogCategories = useMemo(
+    () => Array.from(new Set(catalog.map((c) => c.typeItem))).sort(),
+    [catalog],
+  );
+
+  const lineOptions = (i: number) => {
+    const cat = lineCategory[i];
+    return cat ? catalog.filter((c) => c.typeItem === cat) : catalog;
+  };
+
+  const lineHint = (i: number) => {
+    const opts = lineOptions(i);
+    if (catalog.length === 0) return 'Master Inventory masih kosong - isi manual.';
+    if (opts.length === 0) return 'Tidak ada item pada kategori ini.';
+    const picked = lines[i]?.itemCode
+      ? catalog.find((c) => c.code === lines[i].itemCode)
+      : null;
+    if (picked && picked.price == null) return 'Item ini belum punya harga master - isi manual.';
+    return 'Harga terisi otomatis dari Master Inventory dan tetap bisa diedit.';
+  };
 
   const [detail, setDetail] = useState<Pr | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Pr | null>(null);
@@ -139,6 +162,7 @@ export default function PurchaseRequestsPage() {
   const resetForm = () => {
     setForm({ typeItem: 'Computer', requesterName: user?.name ?? '', note: '', details: '', shipmentCost: 0, diskon: 0 });
     setLines([{ ...EMPTY_LINE }]);
+    setLineCategory(['']);
     setErrors({});
   };
 
@@ -424,7 +448,10 @@ export default function PurchaseRequestsPage() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="xh-section-title">Rincian Item</p>
-              <button type="button" className="xh-btn xh-btn-secondary xh-btn-sm" onClick={() => setLines((p) => [...p, { ...EMPTY_LINE }])}>
+              <button type="button" className="xh-btn xh-btn-secondary xh-btn-sm" onClick={() => {
+                setLines((p) => [...p, { ...EMPTY_LINE }]);
+                setLineCategory((p) => [...p, '']);
+              }}>
                 <Plus className="h-3.5 w-3.5" />
                 Tambah Baris
               </button>
@@ -435,24 +462,52 @@ export default function PurchaseRequestsPage() {
                 <div key={i} className="rounded-lg border border-border bg-surface-raised p-3">
                   <div className="grid gap-2 sm:grid-cols-12">
                     <div className="sm:col-span-5">
-                      <Field label={`Nama Item ${i + 1}`} required error={errors[`line-${i}`]}>
-                        <input
-                          list="pr-catalog"
-                          className="xh-input"
-                          value={line.itemName}
+                      {/* Item 8: pilih dari Master Inventory per kategori.
+                          Harga terisi otomatis tetapi tetap bisa diedit. */}
+                      <Field label={`Kategori Item ${i + 1}`}>
+                        <select
+                          className="xh-select"
+                          value={lineCategory[i] ?? ''}
                           onChange={(e) => {
-                            const match = catalog.find((c) => c.namaItem === e.target.value);
-                            setLine(i, { itemName: e.target.value, itemCode: match?.code ?? null, price: match?.price ?? line.price });
+                            const next = [...lineCategory];
+                            next[i] = e.target.value;
+                            setLineCategory(next);
+                            // Ganti kategori -> item & harga direset.
+                            setLine(i, { itemCode: null, itemName: '', price: 0 });
                           }}
-                          placeholder="Ketik atau pilih dari Master Inventory"
-                        />
-                        <datalist id="pr-catalog">
-                          {catalog.map((c) => (
-                            <option key={c.code} value={c.namaItem}>
-                              {c.code} - {c.brand}
+                        >
+                          <option value="">Semua kategori</option>
+                          {catalogCategories.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
                             </option>
                           ))}
-                        </datalist>
+                        </select>
+                      </Field>
+                      <Field label={`Nama Item ${i + 1}`} required error={errors[`line-${i}`]} hint={lineHint(i)}>
+                        <select
+                          className="xh-select"
+                          value={line.itemCode ?? ''}
+                          disabled={lineOptions(i).length === 0}
+                          onChange={(e) => {
+                            const it = catalog.find((c) => c.code === e.target.value);
+                            setLine(i, {
+                              itemCode: e.target.value || null,
+                              itemName: it?.namaItem ?? '',
+                              price: it?.price ?? 0,
+                            });
+                          }}
+                        >
+                          <option value="">
+                            - Pilih item{lineOptions(i).length === 0 ? ' (kategori kosong)' : ''} -
+                          </option>
+                          {lineOptions(i).map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.code} - {c.namaItem} ({c.brand})
+                              {c.price == null ? ' - harga belum diisi' : ` - ${formatRupiah(c.price)}`}
+                            </option>
+                          ))}
+                        </select>
                       </Field>
                     </div>
                     <div className="sm:col-span-2">
@@ -469,7 +524,10 @@ export default function PurchaseRequestsPage() {
                       <button
                         type="button"
                         className="xh-btn xh-btn-ghost h-9 w-9 p-0 text-danger"
-                        onClick={() => setLines((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)))}
+                        onClick={() => {
+                          setLines((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)));
+                          setLineCategory((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)));
+                        }}
                         disabled={lines.length === 1}
                         aria-label={`Hapus baris ${i + 1}`}
                         title="Hapus baris"

@@ -57,6 +57,29 @@ model Session {
   @@index([expiresAt])
 }
 
+/// Master kategori item. `code` adalah 2 huruf besar yang dipakai sebagai
+/// bagian dari kode item otomatis (item 3), mis. AC -> XHIT-AC2610-0001.
+model ItemCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  code      String   @unique
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+/// Counter nomor urut kode item per kategori per periode YYMM (item 3).
+/// Di-increment DI DALAM transaksi pembuatan item, jadi aman untuk import
+/// banyak baris sekaligus dan request bersamaan.
+model ItemCodeCounter {
+  id         Int    @id @default(autoincrement())
+  category   String
+  period     String
+  lastNumber Int    @default(0)
+
+  @@unique([category, period])
+}
+
 model MasterItem {
   id       Int      @id @default(autoincrement())
   code     String   @unique
@@ -64,7 +87,7 @@ model MasterItem {
   namaItem String
   brand    String
   /// Harga satuan acuan (item 12). Nullable + optional, dipakai sebagai sumber
-  /// harga otomatis pada form Pengajuan kategori Headset (item 13).
+  /// harga otomatis pada form pengajuan (item 8).
   price    Float?
   updateAt DateTime @default(now())
   updateBy String?
@@ -107,12 +130,48 @@ model InventoryHistory {
   updateBy String?
 }
 
+/// Aset laptop. Kolom baru (item 5) semuanya nullable/defaulted agar data
+/// lama tidak rusak.
 model LaptopAsset {
-  id     Int      @id @default(autoincrement())
+  id     Int    @id @default(autoincrement())
   item   String
   user   String
-  status String   @default("Good")
+  status String @default("Good")
   date   DateTime @default(now())
+
+  /// Kode aset dari generator item (item 3 + 5). Unique tapi nullable, jadi
+  /// baris lama yang belum punya kode tetap valid.
+  assetCode       String?  @unique
+  /// Kategori aset - laptop selalu "Computer" (item 5).
+  category        String?  @default("Computer")
+  serialNumber    String?
+  specification   String?
+  /// Tagihan/alasan mutasi terakhir (ringkasan; riwayat lengkap ada di
+  /// AssetAssignmentHistory).
+  lastMutationNote String?
+  createdBy        String?
+  updatedAt        DateTime @default(now()) @updatedAt
+  updatedBy        String?
+
+  history AssetAssignmentHistory[]
+}
+
+/// Riwayat penugasan aset (item 5). Setiap mutasi menutup baris lama dan
+/// membuka baris baru - tidak pernah menimpa.
+model AssetAssignmentHistory {
+  id        Int      @id @default(autoincrement())
+  assetId   Int
+  userName  String
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  changedBy String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  asset LaptopAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([startDate])
 }
 
 model BrokenAsset {
@@ -153,7 +212,8 @@ model TransactionItem {
   updatedBy          String?
 }
 
-/// Daftar item berstatus Damage setelah pengembalian (item 11).
+/// Daftar aset rusak. Sumber tunggal untuk "jumlah aset rusak" (item 1):
+/// hasil Return kondisi Damage, pencatatan manual, dan aset rusak kategori lain.
 model DamagedItem {
   id                  Int      @id @default(autoincrement())
   date                DateTime @default(now())
@@ -169,7 +229,23 @@ model DamagedItem {
   createdBy           String?
   createdAt           DateTime @default(now())
 
+  // ---- Kolom baru (item 1, 2, 6) - semua nullable/defaulted ----
+  /// Kategori aset rusak, dipakai pencatatan manual (item 6).
+  category String?
+  /// Siklus layanan: 'Rusak' | 'Dalam Servis' | 'Selesai' | 'Tidak Bisa Diperbaiki'.
+  /// Hanya status 'Rusak' dan 'Tidak Bisa Diperbaiki' yang dihitung sebagai
+  /// jumlah aset rusak (item 2: kirim ke servis mengurangi jumlah rusak).
+  status         String    @default("Rusak")
+  /// Id ServisAsset tujuan saat aset dikirim ke servis.
+  servisId       Int?
+  /// Qty yang dialihkan ke servis (bisa sebagian dari qty di record ini).
+  servisQty      Int?
+  resolvedAt     DateTime?
+  updatedAt      DateTime  @default(now()) @updatedAt
+  updatedBy      String?
+
   @@index([itemCode])
+  @@index([status])
 }
 
 model StockOutTransaction {
@@ -317,11 +393,26 @@ model ServisAsset {
   servisCode  String   @unique
   date        DateTime @default(now())
   itemName    String
-  teknisiName String
+  /// Nullable (item 2): aset yang dikirim dari Daftar Damage belum tentu sudah
+  /// punya teknisi. Baris lama tidak terpengaruh.
+  teknisiName String?
   status      String   @default("Pending")
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // ---- Kolom baru (item 2) ----
+  /// Asal record aset rusak (DamagedItem.id) bila dibuat dari tombol
+  /// "Kirim ke Servis".
+  sourceDamageId Int?
+  /// Qty aset rusak yang dialihkan ke servis ini.
+  sourceQty      Int     @default(0)
+  itemCode       String?
+  category       String?
+  /// Vendor / penyedia jasa servis (opsional).
+  serviceVendor  String?
+  resolvedAt     DateTime?
+  resolutionNote String?
 }
 
 model LogRuangServer {

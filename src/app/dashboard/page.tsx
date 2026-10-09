@@ -12,7 +12,7 @@ import {
   LayoutDashboard, Boxes, Building2, Headphones, ShoppingCart, Truck, FileText,
   Wallet, PackageSearch, AlertTriangle, TrendingDown, RefreshCw, PackageOpen,
   CheckCircle2, Clock, Users, UserCheck, ClipboardCheck, CreditCard, CalendarOff,
-  Plus, PlayCircle, HandCoins,
+  Plus, PlayCircle, HandCoins, CalendarCheck,
 } from 'lucide-react';
 
 type Tone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
@@ -61,6 +61,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   building2: Building2,
   progress: PlayCircle,
   plus: UserCheck,
+  // Item 4: kartu Booking Asset Pending memakai ikon kalender centang.
+  calendar: CalendarCheck,
 };
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -365,7 +367,9 @@ function quickLinks(division: string) {
       { href: '/transactions/delivery-orders', label: 'Delivery Order', icon: Truck, feature: 'delivery_order' },
       { href: '/transactions/vendor-submissions', label: 'Pengajuan', icon: FileText, feature: 'vendor_submission' },
       { href: '/stock-out-transactions', label: 'Stock Out', icon: PackageOpen, feature: 'transaction_stockout' },
-      { href: '/damaged-items', label: 'Daftar Damage', icon: AlertTriangle, feature: 'transaction_headset' },
+      // Item 4: kartu "Daftar Damage" diganti "Booking Asset Pending" yang
+      // langsung tertaut ke daftar booking terfilter status Pending.
+      { href: '/bookings?status=Pending', label: 'Booking Asset Pending', icon: CalendarCheck, feature: 'booking' },
       { href: '/reports', label: 'Reporting', icon: FileText, feature: 'reporting' },
     ],
     OPS: [

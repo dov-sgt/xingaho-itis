@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { PageHeader, Panel, Field, EmptyState, TableSkeleton, DescList } from '@/components/ui/layout';
@@ -38,6 +38,20 @@ const CATEGORIES = ['Headset', 'Laptop', 'Aksesoris', 'Printer', 'Lainnya'];
 
 /** Kategori Headset mewajibkan pemilihan item katalog (item 13). */
 const requiresItem = (c: string) => c.trim().toLowerCase() === 'headset';
+
+/**
+ * Item 8: pemetaan kategori pengajuan -> kategori katalog MasterItem.
+ * Menggantikan aturan lama yang hanya Headset yang boleh memilih item.
+ */
+const CATEGORY_TO_ITEM_TYPE: Record<string, string> = {
+  Headset: HEADSET_ITEM_CATEGORY,
+  Aksesoris: 'Accessories',
+  Laptop: 'Computer',
+  Printer: 'Printer',
+  Lainnya: 'Others',
+};
+
+/** Semua kategori katalog yang ada di Master Inventory. */
 
 export default function VendorSubmissionsPage() {
   const { can, apiFetch, user } = useAuth();
@@ -98,9 +112,10 @@ export default function VendorSubmissionsPage() {
     load();
   }, [load]);
 
-  // Katalog item kategori Accessories (item 13).
+  // Item 8: katalog item LENGKAP, bukan hanya kategori Accessories.
+  // Dipakai untuk mengisi harga otomatis pada semua kategori pengajuan.
   useEffect(() => {
-    apiFetch(`/api/master/items?category=${encodeURIComponent(HEADSET_ITEM_CATEGORY)}`)
+    apiFetch('/api/master/items')
       .then((r) => r.json())
       .then((d) => setCatalog(Array.isArray(d) ? d : []))
       .catch(() => setCatalog([]));
@@ -211,6 +226,21 @@ export default function VendorSubmissionsPage() {
   };
 
   const selectedItem = catalog.find((c) => c.code === form.itemCode) ?? null;
+
+  // Kategori katalog yang relevan untuk kategori pengajuan terpilih (item 8).
+  const mappedType = CATEGORY_TO_ITEM_TYPE[form.category] ?? null;
+  const catalogCategories = Array.from(new Set(catalog.map((c) => c.typeItem))).sort();
+  const [itemCategory, setItemCategory] = useState('');
+
+  // Defaultkan kategori item saat kategori pengajuan berganti.
+  useEffect(() => {
+    setItemCategory(mappedType ?? '');
+  }, [form.category, mappedType]);
+
+  const itemOptions = useMemo(
+    () => (itemCategory ? catalog.filter((c) => c.typeItem === itemCategory) : catalog),
+    [catalog, itemCategory],
+  );
 
   const columns: Column<Submission>[] = [
     {
@@ -359,63 +389,86 @@ export default function VendorSubmissionsPage() {
             </select>
           </Field>
 
-          {/* Item 13 */}
-          {requiresItem(form.category) && (
-            <Field
-              label="Nama Item"
-              required
-              error={errors.itemCode}
-              htmlFor="vs-item"
-              hint={catalog.length === 0 ? `Belum ada item berkategori ${HEADSET_ITEM_CATEGORY} di Master Inventory.` : `Hanya menampilkan item kategori ${HEADSET_ITEM_CATEGORY}.`}
-              className="sm:col-span-2"
+          {/* Item 8: pilih kategori katalog, lalu item. Harga terisi otomatis
+              dan TETAP bisa diedit - nilai akhir yang disimpan. */}
+          <Field
+            label="Kategori Item"
+            htmlFor="vs-item-cat"
+            hint="Pilih kategori untuk mempersempit daftar item."
+          >
+            <select
+              id="vs-item-cat"
+              className="xh-select"
+              value={itemCategory}
+              onChange={(e) => {
+                setItemCategory(e.target.value);
+                // Ganti kategori katalog mereset item terpilih.
+                setForm({ ...form, itemCode: '', proposedPrice: 0 });
+              }}
             >
-              <select
-                id="vs-item"
-                className="xh-select"
-                value={form.itemCode}
-                onChange={(e) => {
-                  const it = catalog.find((c) => c.code === e.target.value);
-                  setForm({
-                    ...form,
-                    itemCode: e.target.value,
-                    // Harga terisi otomatis dari Master Item dan read-only.
-                    proposedPrice: it?.price ?? 0,
-                  });
-                }}
-              >
-                <option value="">- Pilih item{catalog.length === 0 ? ' (katalog kosong)' : ''} -</option>
-                {catalog.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.namaItem} - {c.brand} - {c.code}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+              <option value="">Semua kategori</option>
+              {catalogCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Nama Item"
+            required={requiresItem(form.category)}
+            error={errors.itemCode}
+            htmlFor="vs-item"
+            hint={
+              catalog.length === 0
+                ? 'Master Inventory masih kosong - harga tidak dapat terisi otomatis.'
+                : itemOptions.length === 0
+                  ? 'Tidak ada item pada kategori katalog ini.'
+                  : 'Pilih item untuk mengisi harga otomatis dari Master Inventory.'
+            }
+            className="sm:col-span-2"
+          >
+            <select
+              id="vs-item"
+              className="xh-select"
+              value={form.itemCode}
+              disabled={catalog.length === 0}
+              onChange={(e) => {
+                const it = catalog.find((c) => c.code === e.target.value);
+                setForm({
+                  ...form,
+                  itemCode: e.target.value,
+                  // Harga otomatis dari Master Item (boleh diedit user setelahnya).
+                  proposedPrice: it?.price ?? 0,
+                });
+              }}
+            >
+              <option value="">- Pilih item{catalog.length === 0 ? ' (katalog kosong)' : ''} -</option>
+              {itemOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} - {c.namaItem} ({c.brand})
+                  {c.price == null ? ' - harga belum diisi' : ` - ${formatRupiah(c.price)}`}
+                </option>
+              ))}
+            </select>
+          </Field>
 
           <Field
             label="Harga"
             htmlFor="vs-price"
             hint={
-              requiresItem(form.category)
-                ? selectedItem && selectedItem.price == null
-                  ? 'Item ini belum memiliki harga di Master Inventory - isi manual atau lengkapi harga master item.'
-                  : selectedItem
-                    ? 'Terisi otomatis dari Master Inventory (hanya-baca).'
-                    : 'Pilih item terlebih dahulu untuk mengisi harga otomatis.'
-                : 'Estimasi biaya pengajuan.'
+              selectedItem && selectedItem.price == null
+                ? 'Item ini belum punya harga di Master Inventory - isi manual, atau lengkapi harga master item.'
+                : selectedItem
+                  ? 'Terisi otomatis dari Master Inventory. Boleh diubah bila harga aktual berbeda.'
+                  : 'Pilih item untuk mengisi harga otomatis, atau isi manual.'
             }
           >
-            {requiresItem(form.category) && selectedItem ? (
-              <div className="relative">
-                <MoneyInput value={form.proposedPrice} onChange={() => {}} />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-muted-foreground">
-                  read-only
-                </span>
-              </div>
-            ) : (
-              <MoneyInput value={form.proposedPrice} onChange={(n) => setForm({ ...form, proposedPrice: n })} />
-            )}
+            <MoneyInput
+              value={form.proposedPrice}
+              onChange={(n) => setForm({ ...form, proposedPrice: n })}
+            />
           </Field>
 
           <Field
@@ -514,6 +567,13 @@ export default function VendorSubmissionsPage() {
                 { label: 'Vendor', value: detail.vendorName },
                 { label: 'Item dipilih', value: detail.itemName ? `${detail.itemName}${detail.itemCode ? ` (${detail.itemCode})` : ''}` : '-' },
                 { label: 'Estimasi Biaya', value: formatRupiah(detail.proposedPrice) },
+                {
+                  label: 'Harga Master (Referensi)',
+                  value:
+                    detail.priceSnapshot != null && detail.priceSnapshot !== detail.proposedPrice
+                      ? `${formatRupiah(detail.priceSnapshot)} (diubah manual)`
+                      : formatRupiah(detail.priceSnapshot ?? detail.proposedPrice),
+                },
                 { label: 'NIK', value: detail.nik || '-' },
                 { label: 'Karyawan', value: detail.karyawanName || '-' },
                 { label: 'Project', value: detail.project || '-' },

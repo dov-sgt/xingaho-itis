@@ -9,6 +9,7 @@ import {
   REPORT_SEARCHABLE,
   allowedReportTypes,
 } from '@/lib/reports';
+import { buildVendorNameMap, resolveVendorLabel } from '@/lib/vendor-label';
 
 /**
  * API Reporting.
@@ -68,29 +69,53 @@ const run = async (model: string, orderBy: any, include?: any) => {
       return { data, pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
     };
 
+    /**
+     * Kolom yang isinya vendor. Ditransformasi ke NAMA vendor supaya tampilan
+     * layar sama dengan hasil ekspor (item 9).
+     */
+    const VENDOR_FIELDS: Partial<Record<ReportType, string>> = {
+      submission: 'vendorName',
+      delivery_order: 'vendorName',
+      headset: 'vendor',
+      damaged: 'vendor',
+    };
+
+    const finish = async (result: { data: any[]; pagination: any }) => {
+      const field = VENDOR_FIELDS[type as ReportType];
+      if (!field || result.data.length === 0) return result;
+      const map = await buildVendorNameMap();
+      return {
+        ...result,
+        data: result.data.map((row: any) => ({
+          ...row,
+          [field]: resolveVendorLabel(row[field], map),
+        })),
+      };
+    };
+
     switch (type as ReportType) {
       case 'headset':
-        return ok(await run('transactionItem', { id: 'desc' }));
+        return ok(await finish(await run('transactionItem', { id: 'desc' })));
       case 'damaged':
-        return ok(await run('damagedItem', { id: 'desc' }));
+        return ok(await finish(await run('damagedItem', { id: 'desc' })));
       case 'stocks':
-        return ok(await run('inventoryStock', { updatedAt: 'desc' }));
+        return ok(await finish(await run('inventoryStock', { updatedAt: 'desc' })));
       case 'purchase_request':
-        return ok(await run('purchaseRequest', { date: 'desc' }, { items: { orderBy: { sortOrder: 'asc' } } }));
+        return ok(await finish(await run('purchaseRequest', { date: 'desc' }, { items: { orderBy: { sortOrder: 'asc' } } })));
       case 'delivery_order':
-        return ok(await run('deliveryOrder', { id: 'desc' }));
+        return ok(await finish(await run('deliveryOrder', { id: 'desc' })));
       case 'submission':
-        return ok(await run('vendorSubmission', { id: 'desc' }));
+        return ok(await finish(await run('vendorSubmission', { id: 'desc' })));
       case 'laptops':
-        return ok(await run('laptopAsset', { date: 'desc' }));
+        return ok(await finish(await run('laptopAsset', { date: 'desc' })));
       case 'employees':
-        return ok(await run('employee', { name: 'asc' }));
+        return ok(await finish(await run('employee', { name: 'asc' })));
       case 'leave_requests':
-        return ok(await run('leaveRequest', { id: 'desc' }));
+        return ok(await finish(await run('leaveRequest', { id: 'desc' })));
       case 'findings':
-        return ok(await run('finding', { id: 'desc' }));
+        return ok(await finish(await run('finding', { id: 'desc' })));
       case 'recording_reviews':
-        return ok(await run('recordingReview', { id: 'desc' }));
+        return ok(await finish(await run('recordingReview', { id: 'desc' })));
       default:
         return badRequest('Jenis laporan tidak dikenal.');
     }

@@ -11,6 +11,19 @@ const VALID_STATUSES = ['Pending', 'Approved', 'Rejected'];
 /** Kategori pengajuan yang mewajibkan pemilihan item katalog (item 13). */
 const CATEGORIES = ['Headset', 'Laptop', 'Aksesoris', 'Printer', 'Lainnya'];
 
+/**
+ * Item 8: pemetaan kategori pengajuan -> kategori katalog MasterItem.
+ * Dipakai server untuk memvalidasi item yang dipilih benar-benar milik
+ * kategori pengajuannya. Kalau tidak ada pemetaan, semua kategori diizinkan.
+ */
+const CATEGORY_TO_ITEM_TYPE: Record<string, string> = {
+  Headset: HEADSET_ITEM_CATEGORY,
+  Aksesoris: 'Accessories',
+  Laptop: 'Computer',
+  Printer: 'Printer',
+  Lainnya: 'Others',
+};
+
 function requiresCatalogItem(category: string): boolean {
   return category.trim().toLowerCase() === 'headset';
 }
@@ -86,23 +99,36 @@ export async function POST(req: NextRequest) {
     ]);
     if (isNegative(proposedPrice)) errors.push('Estimasi Biaya tidak boleh negatif');
 
-    // Item 13: kategori Headset wajib memilih item dari kategori Accessories.
+    // Item 13: kategori Headset WAJIB memilih item dari kategori Accessories.
+    // Item 8: kategori lain juga boleh memilih item, tetapi item wajib milik
+    // kategori katalog yang sesuai (kalau kategori punya pemetaan).
     let catalogItem: { code: string; namaItem: string; price: number | null; typeItem: string } | null = null;
-    if (requiresCatalogItem(cat)) {
-      if (!itemCode) {
-        errors.push(`Kategori ${cat} wajib memilih Nama Item dari kategori ${HEADSET_ITEM_CATEGORY}.`);
+    if (requiresCatalogItem(cat) && !itemCode) {
+      errors.push(`Kategori ${cat} wajib memilih Nama Item dari kategori ${HEADSET_ITEM_CATEGORY}.`);
+    } else if (itemCode) {
+      catalogItem = await prisma.masterItem.findUnique({ where: { code: itemCode } });
+      if (!catalogItem) {
+        errors.push('Item katalog tidak ditemukan.');
       } else {
-        catalogItem = await prisma.masterItem.findUnique({ where: { code: itemCode } });
-        if (!catalogItem) {
-          errors.push('Item katalog tidak ditemukan.');
-        } else if (catalogItem.typeItem !== HEADSET_ITEM_CATEGORY) {
-          errors.push(`Item yang dipilih harus berasal dari kategori ${HEADSET_ITEM_CATEGORY}.`);
+        const expectedType = CATEGORY_TO_ITEM_TYPE[cat];
+        if (expectedType && catalogItem.typeItem !== expectedType) {
+          errors.push(
+            `Item yang dipilih harus berasal dari kategori ${expectedType} (kategori pengajuan: ${cat}).`,
+          );
         }
       }
     }
     if (errors.length > 0) return validationError(errors);
 
     const submissionCode = await nextNumber('vendorSubmission', 'VND-REQ', 3);
+
+    // Item 8: harga yang tersimpan adalah NILAI AKHIR yang dikirim user.
+    // Nilai master hanya dipakai sebagai pratinjau di sisi client; kalau user
+    // tidak mengubah apa pun, nilainya sama. `priceSnapshot` menyimpan harga
+    // master saat pengajuan dibuat sebagai jejak audit.
+    const finalPrice = proposedPrice === undefined || proposedPrice === null || proposedPrice === ''
+      ? (catalogItem?.price ?? 0)
+      : toNumber(proposedPrice, 0);
 
     const submission = await prisma.vendorSubmission.create({
       data: {
@@ -112,8 +138,7 @@ export async function POST(req: NextRequest) {
         title,
         description: description || '-',
         category: cat,
-        // Harga otomatis dari Master Item (item 13) bila ada, jika tidak 0.
-        proposedPrice: catalogItem && catalogItem.price != null ? catalogItem.price : toNumber(proposedPrice, 0),
+        proposedPrice: finalPrice,
         status: 'Pending',
         nik: nik || null,
         karyawanName: karyawanName || null,
@@ -121,7 +146,7 @@ export async function POST(req: NextRequest) {
         namaPembuat: namaPembuat, // item 14
         itemCode: catalogItem?.code ?? itemCode ?? null,
         itemName: catalogItem?.namaItem ?? null,
-        priceSnapshot: catalogItem?.price ?? null,
+        priceSnapshot: finalPrice,
       },
     });
 

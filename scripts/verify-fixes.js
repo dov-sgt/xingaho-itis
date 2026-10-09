@@ -39,8 +39,15 @@ async function call(cookie, path, method, body) {
   check('login it_manager', mgr.status === 200, `status=${mgr.status}`);
 
   // ---- Stock out: item 5 (IT-SPV boleh buat) ----
+  // Item 7 (tahap 2): kategori + item wajib diisi, nama barang diambil server.
+  const stockForSo = (await call(mgr.cookie, '/api/inventory', 'GET')).json.stocks.find(
+    (s) => s.itemCode && s.currentStock > 0,
+  );
   const so = await call(it.cookie, '/api/stock-out-transactions', 'POST', {
-    date: '2026-10-09', itemName: 'Headset Uji', outQty: 2,
+    date: '2026-10-09',
+    category: stockForSo?.category ?? 'Headset',
+    itemCode: stockForSo?.itemCode ?? null,
+    outQty: 1,
   });
   check('IT-SPV buat stock out', so.status === 201, `status=${so.status} ${JSON.stringify(so.json).slice(0, 120)}`);
   check('requestedBy terisi otomatis', typeof so.json?.requestedBy === 'string' && so.json.requestedBy.length > 0, `requestedBy=${JSON.stringify(so.json?.requestedBy)}`);

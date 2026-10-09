@@ -72,7 +72,7 @@ async function buildIt(page: number, pageSize: number) {
     pendingLoans, activeLoans, goodLoans, damagedLoans,
     activeDeposits, totalPR, pendingPR,
     pendingSubmissions, openDeliveries, lowStockCount,
-    damagedTotal, stockRows, totalStocks,
+    stockRows, totalStocks,
     pendingBookings, totalBookings, totalSubmissions,
   ] = await Promise.all([
     prisma.masterItem.count(),
@@ -87,7 +87,6 @@ async function buildIt(page: number, pageSize: number) {
     prisma.vendorSubmission.count({ where: { status: 'Pending' } }),
     prisma.deliveryOrder.count({ where: { status: { in: ['Pending', 'Partial'] } } }),
     prisma.inventoryStock.count({ where: { currentStock: { lt: LOW_STOCK_THRESHOLD } } }),
-    prisma.damagedItem.aggregate({ _sum: { qty: true } }),
     prisma.inventoryStock.findMany({
       orderBy: { updatedAt: 'desc' },
       skip: (page - 1) * pageSize,
@@ -105,17 +104,17 @@ async function buildIt(page: number, pageSize: number) {
       { key: 'totalMasterItems', label: 'Master Item', value: totalMasterItems, tone: 'primary', icon: 'boxes' },
       { key: 'totalVendors', label: 'Vendor', value: totalVendors, tone: 'info', icon: 'building' },
       { key: 'activeLoans', label: 'Headset Digunakan', value: activeLoans, tone: 'info', icon: 'headphones', hint: `Deposit ${fmt(activeDeposits._sum.deposit ?? 0)}` },
-      { key: 'damagedTotal', label: 'Unit Damage', value: damagedTotal._sum.qty ?? 0, tone: 'danger', icon: 'alert', hint: 'Tidak menambah stok' },
       { key: 'totalPR', label: 'Purchase Request', value: totalPR, tone: 'primary', icon: 'cart', hint: `${pendingPR} menunggu approval` },
-      // Permintaan: nilai procured & vendor tidak lagi ditampilkan; diganti
-      // booking asset pending + pengajuan headset pending.
+      // Item 4: kartu "Unit Damage" DIHAPUS dari baris atas dan diganti
+      // Booking Asset Pending. Aset rusak tetap bisa diakses dari menu
+      // Inventaris & Stok, Daftar Damage, dan Servis Asset.
       { key: 'pendingBookings', label: 'Booking Asset Pending', value: pendingBookings, tone: 'warning', icon: 'calendar', hint: `dari ${totalBookings} booking` },
       { key: 'pendingSubmissions', label: 'Pengajuan Headset Pending', value: pendingSubmissions, tone: 'warning', icon: 'clipboard', hint: `dari ${totalSubmissions} pengajuan` },
       { key: 'lowStockCount', label: 'Stok Menipis', value: lowStockCount, tone: 'danger', icon: 'trending', hint: `Stok < ${LOW_STOCK_THRESHOLD}` },
     ],
     summary: [
-      { key: 'pendingSubmissions', label: 'Pengajuan headset menunggu approval', value: pendingSubmissions, tone: 'warning', feature: 'vendor_submission', href: '/transactions/vendor-submissions' },
-      { key: 'pendingBookings', label: 'Booking asset menunggu approval', value: pendingBookings, tone: 'warning', feature: 'booking', href: '/bookings' },
+      { key: 'pendingSubmissions', label: 'Pengajuan headset menunggu approval', value: pendingSubmissions, tone: 'warning', feature: 'vendor_submission', href: '/transactions/vendor-submissions?status=Pending' },
+      { key: 'pendingBookings', label: 'Booking asset menunggu approval', value: pendingBookings, tone: 'warning', feature: 'booking', href: '/bookings?status=Pending' },
       { key: 'openDeliveries', label: 'Delivery Order berjalan', value: openDeliveries, tone: 'info', feature: 'delivery_order', href: '/transactions/delivery-orders' },
     ],
     lifecycle: [

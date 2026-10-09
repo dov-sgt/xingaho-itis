@@ -19,6 +19,7 @@ node prisma/reset.js               # Reset database (SuperAdmin only)
 # Migrasi data (sekali, setelah deploy)
 npm run migrate:headset-status     # Status Headset lama -> Used/Good/Damage (item 11)
 npm run migrate:delivery-orders    # Backfill DO untuk PR Approved tanpa DO (item 6)
+npm run migrate:assets             # Kategori item + backfill aset rusak + histori laptop (tahap 2)
 ```
 
 ## Architecture
@@ -177,6 +178,77 @@ Selalu ambil dari `src/lib/config.ts` - jangan menulis nama perusahaan langsung 
 - `COMPANY_LEGAL_NAME` = `PT Xinghao Technology`
 - `COPYRIGHT_TEXT` = `(c) <tahun> PT Xinghao Technology. Seluruh hak cipta dilindungi.`
 
+## Kode item otomatis (item 3)
+
+Format: `XHIT-<KODE KATEGORI 2 KARAKTER><YY><MM>-<NOMOR URUT>`, contoh `XHIT-AC2610-0001`.
+
+- `src/lib/item-code.ts` adalah satu-satunya sumber generator.
+- Nomor urut diambil dari tabel `ItemCodeCounter` (`category` + `period` YYMM) yang
+  di-`upsert` **di dalam transaksi** pembuatan item. Karena itu import 50 baris
+  sekaligus maupun dua request bersamaan tidak bisa mendapat nomor sama.
+  `MasterItem.code` punya unique constraint sebagai pengaman terakhir.
+- `ITEM_CODE_SEQ_DIGITS = 4` -> ubah ke 3 bila ingin `XHIT-AC2610-001`.
+- Tahun/bulan diambil dari zona `Asia/Jakarta`.
+- Kode item yang sudah ada **tidak pernah diubah** - hanya item baru.
+- Kolom `code` pada form Create dan import bersifat OPSIONAL. Kosong = server yang
+  membuat. Kolom `code` yang diisi tetap dihormati (backward compatible).
+
+## Aset rusak & servis (item 1, 2, 6)
+
+`DamagedItem` adalah **sumber tunggal** jumlah aset rusak. Tabel `BrokenAsset`
+sudah tidak dipakai (hasilnya sudah dimigrasi lewat `npm run migrate:assets`).
+
+Status `DamagedItem`:
+
+| Status | Dihitung sebagai aset rusak? |
+| --- | --- |
+| `Rusak` | ya |
+| `Tidak Bisa Diperbaiki` | ya |
+| `Dalam Servis` | tidak - sudah dipindah ke ServisAsset |
+| `Selesai` | tidak - sudah kembali ke stok Ready |
+
+- `damagedSummary()` di `src/lib/assets.ts` menghitung SEMUANYA dari query
+  agregat, bukan counter terpisah, jadi tidak bisa tidak sinkron.
+- `inServis` diambil dari `ServisAsset` (`SUM(sourceQty)`), **bukan** dari
+  `DamagedItem` - karena saat aset dikirim sebagian, DamagedItem hanya menyimpan
+  sisanya sedangkan qty yang benar-benar diservis ada di record ServisAsset.
+- Alur "Kirim ke Servis" ada di `POST /api/damaged-items/servis`; penyelesaian
+  servis (`Selesai (Diperbaiki)` / `Tidak Bisa Diperbaiki`) di
+  `PUT /api/damaged-items/servis`. Keduanya **satu transaksi Prisma**.
+- `ServisAsset.teknisiName` dibuat nullable karena aset dari Daftar Damage belum
+  tentu punya teknisi.
+
+## Laptop & histori penugasan (item 5)
+
+- Aset laptop dibuat lewat `POST /api/assets/laptops` (bukan dari
+  `/api/inventory`), supaya kode aset dan histori penugasan pertama selalu ikut
+  tercatat dalam satu transaksi.
+- Mutasi pengguna: `PUT /api/assets/laptops` menutup baris histori yang aktif
+  (`endDate`) lalu membuka baris baru. **Riwayat tidak pernah ditimpa.**
+- Histori dibaca dengan `GET /api/assets/laptops?id=<id>`.
+
+## Harga otomatis di form pengajuan (item 8)
+
+Aturan yang berlaku sekarang:
+
+- Harga terisi otomatis dari `MasterItem.price` saat item dipilih, untuk
+  **semua kategori** (bukan hanya Headset).
+- Harga **boleh diedit user**. Nilai akhir yang dikirim disimpan sebagai
+  `proposedPrice` dan dicatat ke `priceSnapshot`.
+- **Dilarang** menimpa harga kiriman client dengan harga master di server.
+- Validasi kategori: item yang dipilih harus milik kategori katalog yang
+  dipetakan (`CATEGORY_TO_ITEM_TYPE`). Kategori `Headset` tetap WAJIB memilih
+  item dari kategori `Accessories` (item 13 tahap 1).
+
+## Field kustom di CrudPage (item 7)
+
+`CrudField.render` memungkinkan field yang isinya bergantung pada field lain.
+`CrudPage` mengirim `{ value, set, values, patch, disabled }`. Contoh pemakaian
+ada di `src/app/stock-out-transactions/page.tsx` (kategori -> barang -> stok).
+
+Jangan memakai `document.querySelector` untuk menulis nilai form lain; pakai
+`patch`.
+
 ## Deployment
 
 - **Path**: `/var/www/html/xingaho-itis`
@@ -190,16 +262,18 @@ cd /var/www/html/xinghao-itis
 git pull origin main
 npm install
 npx prisma db push
-npm run db:seed        # wajib bila permission role berubah
-npm run build          # prebuild menjalankan audit charset + audit kolom wajib
+npm run migrate:assets   # wajib setelah update tahap 2 (kategori item + backfill aset rusak)
+npm run db:seed          # wajib bila permission role berubah
+npm run build            # prebuild menjalankan audit charset + audit kolom wajib
 pm2 restart xinghao-itis
-npm run verify:exports # butuh server aktif, harus "Lulus : 15"
+npm run verify:exports   # butuh server aktif, harus "Lulus : 15"
 ```
 
 Setelah upgrade versi besar, jalankan sekali:
 ```bash
 npm run migrate:headset-status
 npm run migrate:delivery-orders
+npm run migrate:assets
 ```
 
 ### Kalau `pm2 restart` gagal / port 3005 tertahan
@@ -220,8 +294,12 @@ pm2 startup systemd            # hanya sekali, agar auto-start saat reboot
 Jalankan dengan server aktif di `http://127.0.0.1:3005`:
 
 ```bash
-npm run verify:exports       # 15 pemeriksaan berkas unduhan
-node scripts/verify-fixes.js # 19 pemeriksaan regresi untuk 10 perbaikan terakhir
+npm run verify:exports          # 15 pemeriksaan berkas unduhan
+node scripts/verify-fixes.js    # 19 pemeriksaan regresi tahap 1
+node scripts/verify-stage2.js   # 49 pemeriksaan alur tahap 2 (item 1-9)
+node scripts/db-probe.js tables           # daftar tabel
+node scripts/db-probe.js columns DamagedItem
+node scripts/cleanup-test-data.js          # bersihkan sisa data uji verify-stage2
 ```
 
 ## Pre-Revision Checklist

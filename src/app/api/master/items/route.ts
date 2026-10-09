@@ -4,14 +4,18 @@ import { requirePermission, requireAnyPermission } from '@/lib/session';
 import { ok, badRequest, serverError, validationError } from '@/lib/api';
 import { collectErrors, validateRequired, validateString } from '@/lib/validation';
 import { toNumber } from '@/lib/documents';
+import { generateItemCode } from '@/lib/item-code';
 
 export async function GET(req: NextRequest) {
-  // Dibaca juga oleh form Pengajuan (butuh daftar item katalog Headset).
+  // Dibaca juga oleh form Pengajuan & Stock Out (butuh daftar item katalog).
   const authError = await requireAnyPermission(req, [
     { feature: 'master_item', action: 'read' },
     { feature: 'vendor_submission', action: 'read' },
     { feature: 'vendor_submission', action: 'create' },
     { feature: 'purchase_request', action: 'read' },
+    { feature: 'purchase_request', action: 'create' },
+    { feature: 'transaction_stockout', action: 'read' },
+    { feature: 'transaction_stockout', action: 'create' },
   ]);
   if (authError) return authError;
 
@@ -21,7 +25,7 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || '';
 
     const where: any = {};
-    if (category) where.typeItem = category;
+    if (category && category !== 'All') where.typeItem = category;
     if (search) {
       where.OR = [
         { code: { contains: search } },
@@ -31,6 +35,8 @@ export async function GET(req: NextRequest) {
     }
 
     const items = await prisma.masterItem.findMany({ where, orderBy: { id: 'asc' } });
+    // `price` ikut dikembalikan supaya form pengajuan bisa mengisi harga
+    // otomatis tanpa request tambahan (item 8).
     return ok(items);
   } catch (error: any) {
     return serverError(error.message);
@@ -43,36 +49,49 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { code, typeItem, namaItem, brand, price, updateBy } = body;
+    // `code` OPSIONAL (item 3): kosong berarti server yang membuat sendiri
+    // XHIT-<KATEGORI><YY><MM>-<URUT>. Kode yang dikirim tetap dihormati
+    // supaya tidak merusak kode lama / impor dari sumber lain.
+    const code = String(body.code ?? '').trim();
+    const typeItem = String(body.typeItem ?? '').trim();
+    const namaItem = String(body.namaItem ?? '').trim();
+    const brand = body.brand ? String(body.brand).trim() : '-';
+    const price = body.price === undefined || body.price === null || body.price === '' ? null : toNumber(body.price, 0);
 
     const errors = collectErrors([
-      validateRequired(code, 'Kode Item'),
-      validateString(code, 'Kode Item', 1, 50),
       validateRequired(typeItem, 'Kategori'),
       validateRequired(namaItem, 'Nama Item'),
       validateString(namaItem, 'Nama Item', 1, 255),
     ]);
-    // Harga opsional, tapi bila diisi harus angka >= 0 (item 12).
-    if (price !== undefined && price !== null && price !== '') {
-      if (toNumber(price, -1) < 0) errors.push('Harga harus berupa angka dan tidak boleh negatif');
-    }
+    if (code) validateString(code, 'Kode Item', 1, 50);
+    if (price !== null && price < 0) errors.push('Harga harus berupa angka dan tidak boleh negatif');
     if (errors.length > 0) return validationError(errors);
 
-    const existing = await prisma.masterItem.findUnique({ where: { code } });
-    if (existing) return badRequest('Kode Item sudah digunakan');
+    if (code) {
+      const existing = await prisma.masterItem.findUnique({ where: { code } });
+      if (existing) return badRequest('Kode Item sudah digunakan');
+    }
 
-    const item = await prisma.masterItem.create({
-      data: {
-        code,
-        typeItem,
-        namaItem,
-        brand: brand || '-',
-        price: price === undefined || price === null || price === '' ? null : toNumber(price, 0),
-        updateBy: updateBy || 'IT Staff',
-      },
+    // Generator + create satu transaksi supaya nomor urut tidak bentrok.
+    const item = await prisma.$transaction(async (tx) => {
+      const finalCode = code || (await generateItemCode(tx, typeItem));
+      return tx.masterItem.create({
+        data: {
+          code: finalCode,
+          typeItem,
+          namaItem,
+          brand: brand || '-',
+          price,
+          updateBy: body.updateBy || 'IT Staff',
+        },
+      });
     });
+
     return ok(item, 201);
   } catch (error: any) {
+    if (String(error?.message || '').includes('Unique constraint')) {
+      return badRequest('Kode Item sudah digunakan.');
+    }
     return serverError(error.message);
   }
 }
@@ -90,8 +109,8 @@ export async function PUT(req: NextRequest) {
       validateRequired(code, 'Kode Item'),
       validateRequired(namaItem, 'Nama Item'),
     ]);
-    if (price !== undefined && price !== null && price !== '') {
-      if (toNumber(price, -1) < 0) errors.push('Harga harus berupa angka dan tidak boleh negatif');
+    if (price !== undefined && price !== null && price !== '' && toNumber(price, -1) < 0) {
+      errors.push('Harga harus berupa angka dan tidak boleh negatif');
     }
     if (errors.length > 0) return validationError(errors);
 

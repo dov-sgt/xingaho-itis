@@ -31,6 +31,23 @@ export interface CrudField {
   /** Kolom ini tidak ikut dikirim ke server. */
   serverOnly?: boolean;
   defaultValue?: any;
+  /**
+   * Render kustom (item 7). Dipakai untuk field yang bergantung pada field
+   * lain, mis. dropdown item yang isinya difilter oleh kategori terpilih.
+   * Bila diisi, `type` tetap dipakai untuk validasi dasar.
+   */
+  render?: (ctx: CrudFieldRenderContext) => React.ReactNode;
+}
+
+export interface CrudFieldRenderContext {
+  value: any;
+  /** Perbarui nilai field ini. */
+  set: (value: any) => void;
+  /** Nilai seluruh form saat ini. */
+  values: Record<string, any>;
+  /** Perbarui beberapa field sekaligus (mis. reset field lain). */
+  patch: (changes: Record<string, any>) => void;
+  disabled: boolean;
 }
 
 export interface CrudColumn<T> {
@@ -77,6 +94,11 @@ export interface CrudPageProps<T extends { id: number }> {
   pageSize?: number;
   /** Nonaktifkan pagination bila endpoint tidak mendukungnya. */
   simpleList?: boolean;
+  /**
+   * Filter status awal, biasanya dari query string. Dipakai dashboard yang
+   * menautkan daftar terfilter (item 4), mis. `/bookings?status=Pending`.
+   */
+  initialStatus?: string;
 }
 
 export function CrudPage<T extends { id: number }>({
@@ -103,6 +125,7 @@ export function CrudPage<T extends { id: number }>({
   rowLabel,
   pageSize = 10,
   simpleList = false,
+  initialStatus = '',
 }: CrudPageProps<T>) {
   const { can, apiFetch } = useAuth();
   const { toast } = useToast();
@@ -125,7 +148,7 @@ export function CrudPage<T extends { id: number }>({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(initialStatus);
   const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -294,6 +317,17 @@ export function CrudPage<T extends { id: number }>({
     const v = values[f.key];
     const set = (nv: any) => setValues((p) => ({ ...p, [f.key]: nv }));
     const disabled = !!editing && !!f.immutableOnEdit;
+
+    // Render kustom (item 7): field yang isinya bergantung pada field lain.
+    if (f.render) {
+      return f.render({
+        value: v,
+        set,
+        values,
+        patch: (changes) => setValues((p) => ({ ...p, ...changes })),
+        disabled,
+      });
+    }
 
     switch (f.type) {
       case 'money':

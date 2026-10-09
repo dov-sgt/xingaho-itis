@@ -5,6 +5,7 @@ import { ok, badRequest, serverError } from '@/lib/api';
 import { toInt } from '@/lib/documents';
 import { REPORT_TYPES, ReportType, REPORT_LABELS, REPORT_SEARCHABLE, allowedReportTypes } from '@/lib/reports';
 import { REPORT_COLUMNS, isMoneyColumn } from '@/lib/report-columns';
+import { buildVendorNameMap, resolveVendorLabel } from '@/lib/vendor-label';
 import { COMPANY_LEGAL_NAME, COMPANY_DISPLAY_NAME, COMPANY_TAGLINE } from '@/lib/config';
 import { formatDate } from '@/lib/format';
 import * as XLSX from 'xlsx';
@@ -153,31 +154,67 @@ export async function GET(req: NextRequest) {
 
 const db = prisma as unknown as Record<string, any>;
 
+/**
+ * Kolom laporan yang isinya adalah vendor. Nilai mentah bisa berupa kode
+ * vendor pada sebagian baris historis, jadi selalu ditransformasi ke nama
+ * (item 9). Laporan yang tidak punya kolom vendor tidak terpengaruh.
+ */
+const VENDOR_FIELDS: Partial<Record<ReportType, string>> = {
+  submission: 'vendorName',
+  delivery_order: 'vendorName',
+  headset: 'vendor',
+  damaged: 'vendor',
+};
+
 async function loadRows(type: ReportType, where: any, limit: number): Promise<any[]> {
+  let rows: any[];
+
   switch (type) {
     case 'headset':
-      return db.transactionItem.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.transactionItem.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'damaged':
-      return db.damagedItem.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.damagedItem.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'stocks':
-      return db.inventoryStock.findMany({ where, orderBy: { updatedAt: 'desc' }, take: limit });
+      rows = await db.inventoryStock.findMany({ where, orderBy: { updatedAt: 'desc' }, take: limit });
+      break;
     case 'purchase_request':
-      return db.purchaseRequest.findMany({ where, orderBy: { date: 'desc' }, take: limit });
+      rows = await db.purchaseRequest.findMany({ where, orderBy: { date: 'desc' }, take: limit });
+      break;
     case 'delivery_order':
-      return db.deliveryOrder.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.deliveryOrder.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'submission':
-      return db.vendorSubmission.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.vendorSubmission.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'laptops':
-      return db.laptopAsset.findMany({ where, orderBy: { date: 'desc' }, take: limit });
+      rows = await db.laptopAsset.findMany({ where, orderBy: { date: 'desc' }, take: limit });
+      break;
     case 'employees':
-      return db.employee.findMany({ where, orderBy: { name: 'asc' }, take: limit });
+      rows = await db.employee.findMany({ where, orderBy: { name: 'asc' }, take: limit });
+      break;
     case 'leave_requests':
-      return db.leaveRequest.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.leaveRequest.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'findings':
-      return db.finding.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.finding.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     case 'recording_reviews':
-      return db.recordingReview.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      rows = await db.recordingReview.findMany({ where, orderBy: { id: 'desc' }, take: limit });
+      break;
     default:
       return [];
   }
+
+  // Item 9: tampilkan NAMA vendor, bukan kode. Fallback ke nilai asal bila
+  // vendor tidak ditemukan di Master Vendor.
+  const field = VENDOR_FIELDS[type];
+  if (!field) return rows;
+
+  const map = await buildVendorNameMap();
+  return rows.map((row) => ({
+    ...row,
+    [field]: resolveVendorLabel(row[field], map),
+  }));
 }

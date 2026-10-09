@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { CrudPage } from '@/components/ui/crud-page';
 import { CodeBadge } from '@/components/ui/data-display';
 import { formatDate } from '@/lib/format';
 import { BOOKING_STATUSES, toOptions } from '@/lib/options';
-import { Calendar, Clock, MapPin, User2 } from 'lucide-react';
+import { Calendar, Clock, MapPin } from 'lucide-react';
 
 type Row = {
   id: number;
@@ -23,6 +25,22 @@ type Row = {
 const ITEM_TYPES = ['Projector', 'Laptop', 'Monitor', 'Keyboard', 'Mouse', 'Headset', 'Lainnya'];
 
 export default function BookingsPage() {
+  // Item 4: dashboard menautkan ke `/bookings?status=Pending`, jadi filter
+  // status dari query string langsung dipakai.
+  return (
+    <Suspense fallback={null}>
+      <BookingsInner />
+    </Suspense>
+  );
+}
+
+function BookingsInner() {
+  const searchParams = useSearchParams();
+  const initialStatus = useMemo(() => {
+    const s = searchParams.get('status') ?? '';
+    return BOOKING_STATUSES.includes(s as any) ? s : '';
+  }, [searchParams]);
+
   return (
     <CrudPage<Row>
       title="Booking Asset"
@@ -34,6 +52,7 @@ export default function BookingsPage() {
       deleteFeature="booking"
       statusKey="status"
       statusOptions={BOOKING_STATUSES}
+      initialStatus={initialStatus}
       searchPlaceholder="Cari kode booking, peminjam, aset, atau lokasi..."
       emptyTitle="Belum ada booking aset"
       emptyDescription="Catat peminjaman aset agar tidak terjadi bentrok jadwal antar divisi."
