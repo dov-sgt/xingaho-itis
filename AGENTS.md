@@ -94,14 +94,37 @@ Nilai uang **selalu disimpan sebagai angka** di database; format hanya untuk tam
 
 `src/components/BrandLogo.tsx` memakai rantai fallback:
 
-1. /pict/xh_logo_1.png — aset PNG asli. Keberadaannya dicek dengan satu HEAD request per halaman (`probePrimaryAsset`, di-cache di level modul).
-2. /pict/xh_logo.svg — aset vektor yang di-commit ke repo (public/pict/xh_logo.svg).
-3. <LogoMark /> — SVG inline, tanpa request jaringan sama sekali.
+1. `/pict/xh_logo_1.png` — aset PNG utama, **di-commit ke repository**. Keberadaannya dicek satu kali per halaman (`probePrimaryAsset`, di-cache di level modul).
+2. `/pict/xh_logo.svg` — aset vektor cadangan yang juga di-commit.
+3. `<LogoMark />` — SVG inline, tanpa request jaringan sama sekali.
 4. Wordmark teks — selalu tampil, tidak pernah kosong.
 
-- **`public/pict/xh_logo_1.png` ada di `.gitignore`** dengan sengaja: aset merek asli hanya hidup di server, tidak di repository. Konsekuensinya file itu **tidak akan pernah ikut git pull, dan akan terhapus bila menjalankan git clean -xfd atau membuat clone baru** — simpan salinannya di luar folder repo.
-- Komponen `LogoMark` memakai `--brand-mark-from` / `--brand-mark-to` dari `globals.css`. Warna logo sengaja TIDAK mengikuti tema: logo adalah aset merek.
+- `public/pict/xh_logo_1.png` (512x512 RGBA) dibuat oleh `scripts/generate-logo.js`. Untuk memakai logo resmi perusahaan, **ganti file PNG itu** dengan nama file yang sama — tidak perlu ubah kode.
+- `scripts/verify-exports.js` memverifikasi bahwa semua dokumen unduhan benar-benar memuat logo.
+- Warna logo sengaja TIDAK mengikuti tema: logo adalah aset merek, sama di light dan dark mode.
 - Favicon: `src/app/icon.svg` (App Router, otomatis).
+
+## Dokumen unduhan
+
+Semua berkas hasil unduhan memuat logo perusahaan:
+
+| Endpoint | Format | Cara logo disertakan |
+| --- | --- | --- |
+| `/api/transactions/items/template` | `.xlsx` | Gambar disematkan |
+| `/api/transactions/items/template?format=csv` | `.csv` | Referensi di baris metadata (CSV tidak mendukung gambar) |
+| `/api/reports/export?format=xlsx` | `.xlsx` | Gambar disematkan |
+| `/api/reports/export?format=csv` | `.csv` | Referensi di baris metadata |
+| `/print/purchase-request/[id]` | PDF (print browser) | Inline SVG, selalu tampil |
+
+- `src/lib/xlsx-brand.ts` menyematkan logo ke `.xlsx` lewat injeksi OOXML, karena SheetJS edisi komunitas tidak bisa menulis gambar. Selalu dibungkus try/catch: kegagalan menyematkan logo TIDAK boleh membuat berkas tidak terbaca.
+- Definisi kolom laporan ada di `src/lib/report-columns.ts` — dipakai bersama oleh halaman Reporting dan endpoint ekspor, sehingga tampilan layar dan isi berkas selalu identik.
+
+## Copyright
+
+Selalu ambil dari `src/lib/config.ts` — jangan menulis nama perusahaan langsung di komponen:
+
+- `COMPANY_LEGAL_NAME` = `PT Xinghao Technology`
+- `COPYRIGHT_TEXT` = `© <tahun> PT Xinghao Technology. Seluruh hak cipta dilindungi.`
 
 ## Deployment
 

@@ -13,6 +13,8 @@
     "db:reset": "node prisma/reset.js",
     "db:setup": "prisma db push && prisma generate && node prisma/seed.js",
     "migrate:delivery-orders": "node prisma/backfill-delivery-orders.js",
+    "logo:generate": "node scripts/generate-logo.js",
+    "verify:exports": "node scripts/verify-exports.js",
     "migrate:headset-status": "node prisma/migrate-headset-status.js"
   },
   "dependencies": {

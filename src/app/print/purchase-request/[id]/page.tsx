@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { BrandLogoForPrint, COMPANY_FULL_NAME } from '@/components/BrandLogo';
-import { APP_DESCRIPTION } from '@/lib/config';
+import { APP_DESCRIPTION, COMPANY_LEGAL_NAME, COMPANY_TAGLINE, COPYRIGHT_TEXT } from '@/lib/config';
 import { formatRupiah, formatDate, formatNumber } from '@/lib/format';
 import { Printer, ArrowLeft } from 'lucide-react';
 
@@ -116,8 +116,8 @@ export default function PurchaseRequestPrintPage() {
         <header className="flex items-start gap-4 border-b-2 border-[#111] pb-4">
           <BrandLogoForPrint size={54} />
           <div className="min-w-0 flex-1">
-            <h1 className="text-[17pt] font-bold uppercase leading-tight tracking-wide">{COMPANY_FULL_NAME}</h1>
-            <p className="mt-0.5 text-[9pt] text-[#444]">{APP_DESCRIPTION}</p>
+            <h1 className="text-[17pt] font-bold uppercase leading-tight tracking-wide">{COMPANY_LEGAL_NAME}</h1>
+            <p className="mt-0.5 text-[9pt] text-[#444]">{COMPANY_TAGLINE}</p>
             <p className="mt-0.5 text-[8.5pt] text-[#666]">
               Divisi Information Technology &amp; Operasional
             </p>
@@ -212,8 +212,10 @@ export default function PurchaseRequestPrintPage() {
           <SignatureBlock role="Penerima Barang" name="-" />
         </section>
 
-        <footer className="mt-10 border-t border-[#ccc] pt-2 text-center text-[8pt] text-[#777]">
+        <footer className="mt-10 border-t border-[#ccc] pt-2 text-center text-[8pt] leading-relaxed text-[#777]">
           Dicetak dari sistem {COMPANY_FULL_NAME} pada {formatDate(new Date())} · Nomor {pr.prNumber}
+          <br />
+          {COPYRIGHT_TEXT}
         </footer>
       </article>
     </div>

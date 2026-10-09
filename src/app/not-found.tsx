@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import { SearchX, ArrowLeft, Home } from 'lucide-react';
+import { COMPANY_LEGAL_NAME, COPYRIGHT_TEXT } from '@/lib/config';
 
 export default function NotFound() {
   return (
@@ -21,9 +22,12 @@ export default function NotFound() {
           Halaman Login
         </Link>
       </div>
-      <div className="mt-10 flex items-center gap-2 text-[11px] text-muted-foreground">
-        <SearchX className="h-3.5 w-3.5" />
-        Xinghao ITIS
+      <div className="mt-10 space-y-1 text-center">
+        <p className="flex items-center justify-center gap-2 text-[11.5px] font-semibold text-foreground">
+          <BrandLogo size={18} withWordmark={false} />
+          {COMPANY_LEGAL_NAME}
+        </p>
+        <p className="text-[10.5px] text-muted-foreground">{COPYRIGHT_TEXT}</p>
       </div>
     </div>
   );

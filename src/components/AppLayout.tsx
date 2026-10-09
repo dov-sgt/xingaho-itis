@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Lock } from 'lucide-react';
+import { COMPANY_LEGAL_NAME } from '@/lib/config';
 
 const COLLAPSE_KEY = 'itis_sidebar_collapsed';
 
@@ -34,7 +35,8 @@ function Forbidden() {
         {user?.roleName}) tidak memiliki izin untuk membuka halaman ini. Hubungi SuperAdmin bila Anda merasa
         ini adalah kekeliruan.
       </p>
-      <div className="mt-5 flex gap-2">
+      <p className="mt-6 text-[11px] text-muted-foreground">{COMPANY_LEGAL_NAME}</p>
+      <div className="mt-4 flex gap-2">
         <button className="xh-btn xh-btn-secondary" onClick={() => router.back()}>
           Kembali
         </button>

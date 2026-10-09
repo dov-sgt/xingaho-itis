@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/session';
 import { badRequest } from '@/lib/api';
 import { HEADSET_IMPORT_COLUMNS } from '@/lib/headset-template';
+import { readCompanyLogo, embedLogoInXlsx } from '@/lib/xlsx-brand';
+import { COMPANY_LEGAL_NAME, COMPANY_DISPLAY_NAME } from '@/lib/config';
 import * as XLSX from 'xlsx';
 
 /**
@@ -10,46 +12,28 @@ import * as XLSX from 'xlsx';
  * Header kolom PERSIS sama dengan yang dibaca `POST /api/transactions/items/upload`:
  *   date, nik, name, vendor, project, deposit, condition, employeeCategory, note
  *
- * Formatted Excel (.xlsx) berisi 2 baris contoh + sheet "Petunjuk".
+ * Berkas .xlsx memuat logo perusahaan di sheet pertama (di-embed lewat
+ * `embedLogoInXlsx`) serta sheet "Petunjuk" berisi panduan pengisian.
  */
-
-const EXAMPLES = [
-  {
-    date: '2026-01-15',
-    nik: '1234567890',
-    name: 'Budi Santoso',
-    vendor: 'Swapro',
-    project: 'GoTo',
-    deposit: 100000,
-    condition: 'New Use',
-    employeeCategory: 'New Employee',
-    note: 'Contoh baris 1 — hapus sebelum import',
-  },
-  {
-    date: '2026-01-16',
-    nik: '0987654321',
-    name: 'Siti Aminah',
-    vendor: 'Swapro',
-    project: 'GoTo',
-    deposit: 150000,
-    condition: 'Exchange',
-    employeeCategory: 'Existing Employee',
-    note: 'Contoh baris 2 — hapus sebelum import',
-  },
-];
 
 export async function GET(req: NextRequest) {
   const authError = await requirePermission(req, 'transaction_headset', 'create');
   if (authError) return authError;
 
   try {
+    // ---------- CSV ----------
+    // CSV tidak mendukung gambar, jadi identitas perusahaan ditulis sebagai
+    // baris metadata di atas header kolom.
     if (req.nextUrl.searchParams.get('format') === 'csv') {
       const header = HEADSET_IMPORT_COLUMNS.join(',');
-      const lines = EXAMPLES.map((e) =>
-        HEADSET_IMPORT_COLUMNS.map((c) => `"${String((e as Record<string, unknown>)[c]).replace(/"/g, '""')}"`).join(','),
-      );
-      const csv = `${header}\n${lines.join('\n')}\n`;
-      return new NextResponse(csv, {
+      const lines = [
+        `# ${COMPANY_DISPLAY_NAME}`,
+        `# Template Import Headset User — ${COMPANY_LEGAL_NAME}`,
+        `# Logo perusahaan: /pict/xh_logo_1.png`,
+        header,
+      ];
+      const csv = lines.join('\n') + '\n';
+      return new NextResponse('\ufeff' + csv, {
         status: 200,
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
@@ -58,15 +42,44 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // ---------- XLSX ----------
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: data siap isi (header baris 1 = nama kolom yang dibaca importer)
-    const ws = XLSX.utils.json_to_sheet([...EXAMPLES], { header: [...HEADSET_IMPORT_COLUMNS] });
-    ws['!cols'] = HEADSET_IMPORT_COLUMNS.map((c) => ({ wch: Math.max(14, c.length + 4) }));
+    // Sheet 1: data siap isi.
+    // Baris 1-2 kolom A-B dipakai sebagai kop (logo disematkan di sana),
+    // baris 3 adalah header kolom yang dibaca importer.
+    type Cell = string | number;
+    const headerRow = [...HEADSET_IMPORT_COLUMNS] as Cell[];
+
+    const example1: Cell[] = [
+      '2026-01-15', '1234567890', 'Budi Santoso', 'Swapro', 'GoTo',
+      100000, 'New Use', 'New Employee', 'Contoh baris 1 — hapus sebelum import',
+    ];
+    const example2: Cell[] = [
+      '2026-01-16', '0987654321', 'Siti Aminah', 'Swapro', 'GoTo',
+      150000, 'Exchange', 'Existing Employee', 'Contoh baris 2 — hapus sebelum import',
+    ];
+
+    const aoa: Cell[][] = [
+      [COMPANY_LEGAL_NAME, ...headerRow.slice(1)],
+      [`Template Import Headset User · ${COMPANY_DISPLAY_NAME}`, ...headerRow.slice(1)],
+      headerRow,
+      example1,
+      example2,
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 24 },
+      ...headerRow.slice(3).map((c) => ({ wch: Math.max(15, String(c).length + 4) })),
+    ];
     XLSX.utils.book_append_sheet(wb, ws, 'Data Headset');
 
-    // Sheet 2: petunjuk pengisian
-    const guide = [
+    // Sheet 2: petunjuk.
+    const guide: (string | number)[][] = [
+      [`${COMPANY_LEGAL_NAME}`],
       ['PETUNJUK PENGISIAN TEMPLATE IMPORT HEADSET USER'],
       [''],
       ['Kolom', 'Wajib', 'Keterangan'],
@@ -81,16 +94,37 @@ export async function GET(req: NextRequest) {
       ['note', 'Tidak', 'Catatan bebas. Default: -'],
       [''],
       ['CATATAN PENTING'],
-      ['1. Baris contoh (baris 2 dan 3) HAPUS sebelum mengunggah file.'],
-      ['2. Jangan mengubah nama kolom header.'],
-      ['3. Status awal setiap data adalah "Pending", lalu diubah ke "Used" saat pengajuan disetujui.'],
-      ['4. Simpan file dalam format .xlsx lalu unggah di menu Headset User.'],
+      ['1. Logo perusahaan tercetak di sheet "Data Headset". Jangan dihapus.'],
+      ['2. Baris contoh (baris 5 dan 6) HAPUS sebelum mengunggah file.'],
+      ['3. Jangan mengubah nama kolom header pada baris 3.'],
+      ['4. Status awal setiap data adalah "Pending", lalu diubah ke "Used" saat pengajuan disetujui.'],
+      [`5. Simpan file dalam format .xlsx lalu unggah di menu Headset User — ${COMPANY_LEGAL_NAME}.`],
     ];
     const wsGuide = XLSX.utils.aoa_to_sheet(guide);
-    wsGuide['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 80 }];
+    wsGuide['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 86 }];
     XLSX.utils.book_append_sheet(wb, wsGuide, 'Petunjuk');
 
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    let buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    // Sematkan logo di sheet pertama.
+    const logo = readCompanyLogo();
+    if (logo) {
+      try {
+        buf = embedLogoInXlsx(Buffer.from(buf), XLSX, {
+          logoBytes: logo,
+          logoMime: logo[0] === 0x3c ? 'image/svg+xml' : 'image/png',
+          logoExt: logo[0] === 0x3c ? 'svg' : 'png',
+          companyName: COMPANY_LEGAL_NAME,
+          width: 190,
+          height: 52,
+          fromCol: 0,
+          fromRow: 0,
+        });
+      } catch (e: any) {
+        // Gagal menyematkan logo TIDAK boleh membuat template tidak terbaca.
+        console.error('[template-headset] gagal menyematkan logo:', e?.message);
+      }
+    }
 
     return new NextResponse(new Uint8Array(buf), {
       status: 200,

@@ -35,5 +35,6 @@ prisma/dev.db.backup
 # OS
 Thumbs.db
 
-# Logo PNG asli (opsional) — taruh di sini bila tersedia
-public/pict/xh_logo_1.png
+# Catatan: public/pict/xh_logo_1.png SENGAJA ikut di-commit.
+# Logo adalah aset merek perusahaan dan sekarang di-version-control.
+# Untuk membuat ulang logo: node scripts/generate-logo.js

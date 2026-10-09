@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { RotateCcw, Home, TriangleAlert } from 'lucide-react';
+import { COPYRIGHT_TEXT } from '@/lib/config';
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           Ke Dashboard
         </Link>
       </div>
+      <p className="mt-8 text-[10.5px] text-muted-foreground">{COPYRIGHT_TEXT}</p>
     </div>
   );
 }

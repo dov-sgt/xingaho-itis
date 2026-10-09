@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, UserSession } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { BrandLogo } from '@/components/BrandLogo';
-import { APP_DESCRIPTION } from '@/lib/config';
+import { APP_DESCRIPTION, COMPANY_LEGAL_NAME, COPYRIGHT_TEXT } from '@/lib/config';
 import { Eye, EyeOff, User2, Lock, LogIn, Loader2, AlertCircle, ShieldCheck, Boxes, Users2, ChartNoAxesColumn } from 'lucide-react';
 
 const HIGHLIGHTS = [
@@ -106,9 +106,8 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <p className="relative text-[10.5px] text-sidebar-muted/70">
-          &copy; {new Date().getFullYear()} Xinghao IT Division. Seluruh hak cipta dilindungi.
-        </p>
+        <p className="relative text-[10.5px] leading-relaxed text-sidebar-muted/70">{COPYRIGHT_TEXT}</p>
+        <p className="relative text-[10.5px] text-sidebar-muted/60">{COMPANY_LEGAL_NAME} &middot; Divisi Information Technology</p>
       </section>
 
       {/* ---- Panel form ---- */}
@@ -206,6 +205,8 @@ export default function LoginPage() {
             Belum memiliki akun? Hubungi <span className="font-semibold text-foreground">SuperAdmin</span> divisi IT
             untuk permintaan akses.
           </p>
+
+          <p className="mt-5 text-center text-[10.5px] leading-relaxed text-muted-foreground">{COPYRIGHT_TEXT}</p>
         </div>
       </section>
     </div>

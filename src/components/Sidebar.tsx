@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/BrandLogo';
+import { COMPANY_LEGAL_NAME } from '@/lib/config';
 import { DIVISION_NAV, ADMIN_NAV, NavItem } from '@/lib/navigation';
 import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, X } from 'lucide-react';
 
@@ -172,7 +173,7 @@ export default function Sidebar({
         )}
       </nav>
 
-      {collapsed && (
+      {collapsed ? (
         <button
           onClick={onToggleCollapse}
           className="hidden h-10 shrink-0 items-center justify-center border-t border-sidebar-border text-sidebar-muted transition-colors hover:text-sidebar-foreground lg:flex"
@@ -181,6 +182,13 @@ export default function Sidebar({
         >
           <PanelLeft className="h-4 w-4" />
         </button>
+      ) : (
+        <footer className="shrink-0 border-t border-sidebar-border px-4 py-2.5">
+          <p className="truncate text-[10.5px] font-semibold text-sidebar-foreground/70">{COMPANY_LEGAL_NAME}</p>
+          <p className="truncate text-[9.5px] text-sidebar-muted/60">
+            © {new Date().getFullYear()} · Hak cipta dilindungi
+          </p>
+        </footer>
       )}
     </>
   );
