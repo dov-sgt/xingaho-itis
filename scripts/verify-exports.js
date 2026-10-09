@@ -76,6 +76,33 @@ function checkXlsx(buf, label) {
   return ok;
 }
 
+/**
+ * Deteksi cepat: server yang berjalan masih memakai build lama?
+ * Route `/api/reports/export` hanya ada sejak commit 3ee8894, jadi 404 di
+ * sini hampir pasti berarti `npm run build` belum dijalankan.
+ */
+async function detectStaleBuild(H) {
+  const res = await fetch(`${BASE}/api/reports/export?type=stocks&format=csv`, { headers: H });
+  if (res.status !== 404) return false;
+
+  let buildId = '(tidak ada)';
+  try {
+    buildId = require('fs').readFileSync(require('path').join(__dirname, '..', '.next', 'BUILD_ID'), 'utf8').trim();
+  } catch { /* belum pernah build */ }
+
+  console.log('*** PERINGATAN: server masih menjalankan BUILD LAMA ***');
+  console.log(`    Route /api/reports/export tidak ditemukan (404).`);
+  console.log(`    BUILD_ID di .next: ${buildId}`);
+  console.log('');
+  console.log('    Kemungkinan besar `git pull` sudah berhasil tetapi build belum diulang.');
+  console.log('    Jalankan:');
+  console.log('        npm run build');
+  console.log('        pm2 restart xinghao-itis');
+  console.log('        npm run verify:exports');
+  console.log('');
+  return true;
+}
+
 async function main() {
   const login = await fetch(`${BASE}/api/auth/login`, {
     method: 'POST',
@@ -87,6 +114,15 @@ async function main() {
 
   let pass = 0;
   let fail = 0;
+
+  if (await detectStaleBuild(H)) {
+    console.log('=== 0. Diagnosa build ===');
+    console.log('  GAGAL server menyajikan build lama — hasil di bawah tidak relevan.');
+    console.log('\n=== Ringkasan ===');
+    console.log(`  Lulus : ${pass}`);
+    console.log(`  Gagal : ${fail}`);
+    process.exit(2);
+  }
 
   console.log('=== 1. Template Import Headset (.xlsx) ===');
   {
