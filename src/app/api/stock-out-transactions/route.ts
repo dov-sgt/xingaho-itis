@@ -1,33 +1,44 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { ok, badRequest, serverError } from '@/lib/api';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers } from '@/lib/crud-route';
+import { toInt, toNumber } from '@/lib/documents';
 
-export async function GET(req: NextRequest) {
-  try {
-    const transactions = await prisma.stockOutTransaction.findMany({ orderBy: { id: 'desc' } });
-    return ok(transactions);
-  } catch (error: any) { return serverError(error.message); }
-}
+const STATUS = ['Pending', 'Approved', 'Rejected'];
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { date, category, itemCode, itemName, outQty, note, requestedBy } = body;
-    if (!itemName || !outQty) return badRequest('Item Name dan Out Qty wajib diisi');
-    const transaction = await prisma.stockOutTransaction.create({
-      data: { date: date ? new Date(date) : new Date(), category, itemCode: itemCode || null, itemName, outQty: parseInt(outQty) || 1, note: note || null, requestedBy: requestedBy || 'Staff IT' },
-    });
-    return ok(transaction, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
+const handlers = buildCrudHandlers({
+  model: 'stockOutTransaction',
+  feature: 'transaction_stockout',
+  searchFields: ['itemName', 'category', 'note', 'requestedBy', 'itemCode'],
+  statusField: 'status',
+  dateField: 'date',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.itemName) e.push('Nama barang wajib diisi.');
+    if (toInt(body.outQty, 0) < 1) e.push('Qty minimal 1.');
+    if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
+    return e;
+  },
+  toCreate: (body) => ({
+    date: body.date ? new Date(body.date) : new Date(),
+    category: body.category || 'Others',
+    itemCode: body.itemCode || null,
+    itemName: body.itemName,
+    outQty: toInt(body.outQty, 1),
+    note: body.note || null,
+    status: body.status || 'Pending',
+    requestedBy: body.requestedBy || null,
+  }),
+  toUpdate: (body) => ({
+    ...(body.date ? { date: new Date(body.date) } : {}),
+    category: body.category,
+    itemCode: body.itemCode ?? null,
+    itemName: body.itemName,
+    outQty: body.outQty !== undefined ? toInt(body.outQty, 1) : undefined,
+    note: body.note ?? null,
+    ...(body.status ? { status: body.status } : {}),
+    ...(body.approvedBy !== undefined ? { approvedBy: body.approvedBy } : {}),
+  }),
+});
 
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { id, status, approvedBy } = body;
-    if (!id) return badRequest('ID is required');
-    const updated = await prisma.stockOutTransaction.update({ where: { id: Number(id) }, data: { status, approvedBy } });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

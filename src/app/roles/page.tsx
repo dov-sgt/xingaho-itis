@@ -1,357 +1,368 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { Shield, Plus, Edit, Trash2, X, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { PageHeader, Panel, Field, EmptyState, TableSkeleton } from '@/components/ui/layout';
+import { DataTable, Column, CodeBadge, Toolbar, SearchInput } from '@/components/ui/data-display';
+import { Modal, ConfirmDialog, SubmitButton } from '@/components/ui/form';
+import { ACTIONS, ACTION_LABELS, FEATURES, Feature, PermissionMap, canAccessMenuIn } from '@/lib/rbac';
+import { ShieldCheck, Plus, Users, Trash2, Check, Info, KeyRound } from 'lucide-react';
 
-const ALL_FEATURES = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'master_item', label: 'Master Item' },
-  { key: 'master_vendor', label: 'Master Vendor' },
-  { key: 'inventory_type_item', label: 'Inventory & Stok' },
-  { key: 'transaction_headset', label: 'Transaction Headset' },
-  { key: 'transaction_stockout', label: 'Stock Out' },
-  { key: 'purchase_request', label: 'Purchase Request' },
-  { key: 'delivery_order', label: 'Delivery Order' },
-  { key: 'vendor_submission', label: 'Vendor Submission' },
-  { key: 'booking', label: 'Booking Asset' },
-  { key: 'servis_asset', label: 'Servis Asset' },
-  { key: 'log_ruang_server', label: 'Log Ruang Server' },
-  { key: 'recording_review', label: 'Recording Review' },
-  { key: 'finding', label: 'Finding' },
-  { key: 'user_management', label: 'User Management' },
-  { key: 'reporting', label: 'Reporting' },
-];
-
-const ACTIONS = ['create', 'read', 'update', 'delete'] as const;
-
-interface Role {
+type Role = {
   id: number;
   code: string;
   name: string;
   description: string | null;
-  permissions: Record<string, string[]>;
-}
+  permissions: PermissionMap;
+  _count?: { users: number };
+};
+
+const FEATURE_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  master_item: 'Master Inventory',
+  master_vendor: 'Master Vendor',
+  inventory_type_item: 'Inventaris & Stok',
+  transaction_headset: 'Headset User',
+  transaction_stockout: 'Stock Out',
+  purchase_request: 'Purchase Request',
+  delivery_order: 'Delivery Order',
+  vendor_submission: 'Pengajuan',
+  booking: 'Booking Asset',
+  servis_asset: 'Servis Asset',
+  log_ruang_server: 'Log Ruang Server',
+  recording_review: 'Recording Review',
+  finding: 'QC Findings',
+  user_management: 'User Management',
+  division_management: 'Division Management',
+  role_management: 'Role Management',
+  reporting: 'Reporting',
+};
+
+const EMPTY = { code: '', name: '', description: '' };
 
 export default function RolesPage() {
-  const { can, role, canAccess, apiFetch } = useAuth();
+  const { can, isSuperAdmin, apiFetch } = useAuth();
   const { toast } = useToast();
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    description: '',
-    permissions: {} as Record<string, string[]>,
-  });
-  const [errorMsg, setErrorMsg] = useState('');
 
-  const fetchRoles = () => {
+  const [rows, setRows] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const [matrixOpen, setMatrixOpen] = useState<Role | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ ...EMPTY });
+  const [permissions, setPermissions] = useState<PermissionMap>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Role | null>(null);
+
+  const canCreate = can('role_management', 'create');
+  const canUpdate = can('role_management', 'update');
+  const canDelete = can('role_management', 'delete');
+
+  const load = useCallback(async () => {
     setLoading(true);
-    apiFetch('/api/roles')
-      .then((res) => {
-        if (!res.ok) throw new Error('Gagal memuat roles');
-        return res.json();
-      })
-      .then((data) => {
-        setRoles(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        toast('error', 'Gagal memuat data role');
-        setLoading(false);
-      });
-  };
+    try {
+      const res = await apiFetch('/api/roles');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat role');
+      setRows(Array.isArray(json) ? json : []);
+    } catch (e: any) {
+      toast('error', e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, toast]);
 
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    load();
+  }, [load]);
 
-  const handleOpenAdd = () => {
-    setEditingRole(null);
-    setFormData({ code: '', name: '', description: '', permissions: {} });
-    setErrorMsg('');
-    setIsModalOpen(true);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q));
+  }, [rows, search]);
+
+  const openMatrix = (r: Role) => {
+    setMatrixOpen(r);
+    setPermissions({ ...(r.permissions ?? {}) });
   };
 
-  const handleOpenEdit = (r: Role) => {
-    setEditingRole(r);
-    setFormData({
-      code: r.code,
-      name: r.name,
-      description: r.description || '',
-      permissions: { ...r.permissions },
-    });
-    setErrorMsg('');
-    setIsModalOpen(true);
-  };
-
-  const handleTogglePermission = (feature: string, action: string) => {
-    setFormData((prev) => {
-      const current = prev.permissions[feature] || [];
-      const updated = current.includes(action)
-        ? current.filter((a) => a !== action)
-        : [...current, action];
-      return {
-        ...prev,
-        permissions: {
-          ...prev.permissions,
-          [feature]: updated,
-        },
-      };
+  const toggle = (feature: Feature, action: string) => {
+    setPermissions((prev) => {
+      const current = Array.isArray(prev[feature]) ? [...(prev[feature] as string[])] : [];
+      const next = current.includes(action) ? current.filter((a) => a !== action) : [...current, action];
+      return { ...prev, [feature]: next } as PermissionMap;
     });
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
+  const setFeatureAll = (feature: Feature, value: boolean) => {
+    setPermissions((prev) => ({ ...prev, [feature]: value ? [...ACTIONS] : [] } as PermissionMap));
+  };
+
+  const savePermissions = async () => {
+    if (!matrixOpen) return;
     setSaving(true);
     try {
-      const url = '/api/roles';
-      const method = editingRole ? 'PUT' : 'POST';
-      const payload = editingRole
-        ? { id: editingRole.id, ...formData }
-        : formData;
-
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const res = await apiFetch('/api/roles', {
+        method: 'PUT',
+        body: JSON.stringify({ id: matrixOpen.id, permissions }),
       });
-
-      const result = await res.json();
-      if (!res.ok) {
-        setErrorMsg(result.error || 'Gagal menyimpan role');
-        setSaving(false);
-        return;
-      }
-
-      setIsModalOpen(false);
-      toast('success', editingRole ? 'Role diperbarui' : 'Role ditambahkan');
-      fetchRoles();
-    } catch (err: any) {
-      setErrorMsg(err.message);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menyimpan permission');
+      toast('success', `Permission untuk ${matrixOpen.name} disimpan.`);
+      setMatrixOpen(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Hapus role ini?')) return;
+  const createRole = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const e: Record<string, string> = {};
+    if (!form.code.trim()) e.code = 'Kode role wajib diisi.';
+    if (!form.name.trim()) e.name = 'Nama role wajib diisi.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setSaving(true);
     try {
-      const res = await apiFetch(`/api/roles?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast('success', 'Role dihapus');
-        fetchRoles();
-      } else {
-        const r = await res.json();
-        toast('error', r.error || 'Gagal menghapus role');
-      }
-    } catch (err) {
-      toast('error', 'Gagal menghapus role');
+      const res = await apiFetch('/api/roles', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, code: form.code.trim().toUpperCase().replace(/\s+/g, '_'), permissions: {} }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal membuat role');
+      toast('success', `Role ${json.name} dibuat. Atur izinnya melalui tombol Atur Izin.`);
+      setCreateOpen(false);
+      setForm({ ...EMPTY });
+      load();
+    } catch (err: any) {
+      toast('error', err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!canAccess('user_management')) {
-    return (
-      <div className="p-8 bg-background rounded-xl border border-border text-center">
-        <Shield className="w-12 h-12 text-destructive mx-auto mb-3" />
-        <h3 className="text-base font-bold text-foreground">Akses Ditolak</h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          Role {role} tidak memiliki akses ke halaman ini.
-        </p>
-      </div>
-    );
-  }
+  const remove = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await apiFetch(`/api/roles?id=${confirmDelete.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menghapus');
+      toast('success', `Role ${confirmDelete.name} dihapus.`);
+      setConfirmDelete(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
+  };
+
+  const columns: Column<Role>[] = [
+    {
+      key: 'name',
+      header: 'Role',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{r.name}</p>
+          {r.description && <p className="truncate text-[10.5px] text-muted-foreground">{r.description}</p>}
+        </div>
+      ),
+    },
+    { key: 'code', header: 'Kode', cell: (r) => <CodeBadge>{r.code}</CodeBadge> },
+    {
+      key: 'modules',
+      header: 'Modul Terakses',
+      numeric: true,
+      cell: (r) => {
+        const n = FEATURES.filter((f) => canAccessMenuIn(r.permissions, f)).length;
+        return <span className="font-bold tabular-nums text-foreground">{n}</span>;
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      className: 'text-right',
+      cell: (r) => (
+        <div className="flex items-center justify-end gap-1">
+          {canUpdate && (
+            <button className="xh-btn xh-btn-secondary xh-btn-sm" onClick={() => openMatrix(r)}>
+              <KeyRound className="h-3.5 w-3.5" />
+              Atur Izin
+            </button>
+          )}
+          {canDelete && r.code !== 'SUPERADMIN' && (
+            <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Hapus role" onClick={() => setConfirmDelete(r)}>
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Role Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Kelola role dan permission per menu
-          </p>
-        </div>
-        {can('user_management', 'create') && (
-          <Button onClick={handleOpenAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            Tambah Role
-          </Button>
-        )}
+    <div className="space-y-5">
+      <PageHeader
+        icon={ShieldCheck}
+        title="Role Management"
+        description="Kelola role beserta izin per modul. Izin disimpan di database dan langsung berlaku pada seluruh API."
+        actions={canCreate && <button className="xh-btn xh-btn-primary" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" />Tambah Role</button>}
+      />
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground">
+        <Info className="mt-px h-4 w-4 shrink-0" />
+        <p>
+          Role <strong>SUPERADMIN</strong> otomatis memiliki akses penuh tanpa perlu mencentang. Perubahan izin
+          langsung diterapkan pada server — menu yang hilang di sidebar akan ditolak API-nya juga dengan 403.
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Daftar Role</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 px-3 font-medium text-muted-foreground">Kode</th>
-                  <th className="py-2 px-3 font-medium text-muted-foreground">Nama</th>
-                  <th className="py-2 px-3 font-medium text-muted-foreground">Deskripsi</th>
-                  <th className="py-2 px-3 font-medium text-muted-foreground text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                      Memuat...
-                    </td>
-                  </tr>
-                ) : roles.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                      Tidak ada role.
-                    </td>
-                  </tr>
-                ) : (
-                  roles.map((r) => (
-                    <tr key={r.id} className="hover:bg-muted/50">
-                      <td className="py-2 px-3 font-mono font-semibold text-foreground">{r.code}</td>
-                      <td className="py-2 px-3 text-foreground">{r.name}</td>
-                      <td className="py-2 px-3 text-muted-foreground">{r.description || '-'}</td>
-                      <td className="py-2 px-3 text-center">
-                        <div className="flex gap-1 justify-center">
-                          {can('user_management', 'update') && (
-                            <button
-                              onClick={() => handleOpenEdit(r)}
-                              className="p-1 hover:bg-accent rounded"
-                            >
-                              <Edit className="w-3 h-3" />
-                            </button>
-                          )}
-                          {can('user_management', 'delete') && (
-                            <button
-                              onClick={() => handleDelete(r.id)}
-                              className="p-1 hover:bg-destructive/10 rounded"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setIsModalOpen(false)} />
-          <div className="relative z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border bg-background p-6 shadow-lg">
-            <div className="flex justify-between mb-4 pb-3 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground">
-                {editingRole ? 'Ubah Role' : 'Tambah Role'}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {errorMsg && (
-              <div className="mb-4 p-2.5 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-xs">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Kode Role</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="Contoh: IT_MANAGER"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nama Role</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Contoh: IT Manager"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Deskripsi</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Deskripsi role..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Permission per Menu</Label>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-muted border-b border-border">
-                        <th className="py-2 px-3 font-medium text-muted-foreground">Menu</th>
-                        {ACTIONS.map((action) => (
-                          <th key={action} className="py-2 px-3 font-medium text-muted-foreground text-center">
-                            {action.charAt(0).toUpperCase() + action.slice(1)}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {ALL_FEATURES.map((feature) => (
-                        <tr key={feature.key} className="hover:bg-muted/50">
-                          <td className="py-2 px-3 text-foreground">{feature.label}</td>
-                          {ACTIONS.map((action) => (
-                            <td key={action} className="py-2 px-3 text-center">
-                              <input
-                                type="checkbox"
-                                checked={(formData.permissions[feature.key] || []).includes(action)}
-                                onChange={() => handleTogglePermission(feature.key, action)}
-                                className="rounded border-input"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-border">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Batal
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Menyimpan...' : 'Simpan'}
-                </Button>
-              </div>
-            </form>
-          </div>
+      <Panel padded={false}>
+        <Toolbar>
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari nama atau kode role…" />
+        </Toolbar>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TableSkeleton rows={8} cols={4} />
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={filtered}
+              rowKey={(r) => r.id}
+              empty={<EmptyState icon={ShieldCheck} title="Belum ada role" description="Buat role pertama, lalu tentukan izin per modulnya." />}
+            />
+          )}
         </div>
-      )}
+      </Panel>
+
+      {/* ---- Matrix izin ---- */}
+      <Modal
+        open={!!matrixOpen}
+        onClose={() => !saving && setMatrixOpen(null)}
+        title={`Izin Role · ${matrixOpen?.name ?? ''}`}
+        description="Centang izin yang dimiliki role pada setiap modul."
+        size="xl"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setMatrixOpen(null)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={savePermissions}>
+              Simpan Izin
+            </SubmitButton>
+          </>
+        }
+      >
+        <div className="xh-table-wrapper">
+          <table className="xh-table">
+            <thead>
+              <tr>
+                <th scope="col" className="w-[42%]">
+                  Modul
+                </th>
+                {ACTIONS.map((a) => (
+                  <th key={a} scope="col" className="text-center">
+                    {ACTION_LABELS[a]}
+                  </th>
+                ))}
+                <th scope="col" className="text-center">
+                  Semua
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {FEATURES.map((f) => {
+                const list = Array.isArray(permissions[f]) ? (permissions[f] as string[]) : [];
+                const all = ACTIONS.every((a) => list.includes(a));
+                return (
+                  <tr key={f}>
+                    <td>
+                      <span className="font-medium text-foreground">{FEATURE_LABELS[f] ?? f}</span>
+                    </td>
+                    {ACTIONS.map((a) => (
+                      <td key={a} className="num">
+                        <input
+                          type="checkbox"
+                          aria-label={`${ACTION_LABELS[a]} ${FEATURE_LABELS[f] ?? f}`}
+                          className="h-4 w-4 accent-[hsl(var(--primary))]"
+                          checked={list.includes(a)}
+                          onChange={() => toggle(f, a)}
+                        />
+                      </td>
+                    ))}
+                    <td className="num">
+                      <input
+                        type="checkbox"
+                        aria-label={`Semua izin ${FEATURE_LABELS[f] ?? f}`}
+                        className="h-4 w-4 accent-[hsl(var(--primary))]"
+                        checked={all}
+                        onChange={(e) => setFeatureAll(f, e.target.checked)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Modal>
+
+      {/* ---- Buat role ---- */}
+      <Modal
+        open={createOpen}
+        onClose={() => !saving && setCreateOpen(false)}
+        title="Tambah Role"
+        description="Kode role akan otomatis menjadi huruf kapital dengan underscore."
+        size="sm"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setCreateOpen(false)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={createRole as any}>
+              Buat Role
+            </SubmitButton>
+          </>
+        }
+      >
+        <form onSubmit={createRole} className="space-y-3">
+          <Field label="Kode Role" required error={errors.code} hint="Contoh: OPS_SPV → tersimpan sebagai OPS_SPV">
+            <input
+              className="xh-input font-mono"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+              placeholder="IT_SPV"
+            />
+          </Field>
+          <Field label="Nama Role" required error={errors.name}>
+            <input className="xh-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="IT Supervisor" />
+          </Field>
+          <Field label="Deskripsi">
+            <textarea className="xh-input min-h-[70px] py-2" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </Field>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Hapus role?"
+        message={
+          <>
+            Role <strong>{confirmDelete?.name}</strong> akan dihapus. Role yang masih dipakai pengguna tidak dapat
+            dihapus.
+          </>
+        }
+        confirmLabel="Hapus"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

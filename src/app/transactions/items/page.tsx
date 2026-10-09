@@ -1,308 +1,655 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { Headphones, Search, X, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle, XCircle, RotateCcw, Upload, FileSpreadsheet } from 'lucide-react';
+import { PageHeader, Panel, Field, EmptyState, TableSkeleton, DescList } from '@/components/ui/layout';
+import { DataTable, Column, StatusBadge, Pagination, Toolbar, SearchInput } from '@/components/ui/data-display';
+import { Modal, ConfirmDialog, MoneyInput, NumberInput, SubmitButton } from '@/components/ui/form';
+import { formatRupiah, formatDate, formatNumber } from '@/lib/format';
+import { VALID_CONDITIONS, VALID_RETURN_CONDITIONS, RETURN_CONDITION_LABELS } from '@/lib/headset';
+import {
+  Headphones, Plus, Download, Upload, Undo2, Check, X, Trash2,
+  FileSpreadsheet, RotateCcw, Info, AlertTriangle,
+} from 'lucide-react';
 
-export default function HeadsetUserPage() {
-  const { can, role, canAccess, user, apiFetch } = useAuth();
+type Tx = {
+  id: number;
+  date: string;
+  employeeCategory: string;
+  nik: string;
+  name: string;
+  condition: string;
+  vendor: string;
+  deposit: number;
+  note: string | null;
+  project: string | null;
+  status: string;
+  itemCode: string | null;
+  itemName: string | null;
+  returnCondition: string | null;
+  returnNote: string | null;
+  returnedAt: string | null;
+  approvedBy: string | null;
+  updatedAt: string;
+};
+
+const STATUS_TABS = ['Semua', 'Pending', 'Used', 'Good', 'Damage', 'Reject'] as const;
+
+const EMPTY = {
+  date: new Date().toISOString().slice(0, 10),
+  employeeCategory: 'New Employee',
+  nik: '',
+  name: '',
+  condition: 'New Use',
+  vendor: 'Swapro',
+  project: 'GoTo',
+  deposit: 100000,
+  note: '',
+};
+
+export default function TransactionItemsPage() {
+  const { can, apiFetch, user } = useAuth();
   const { toast } = useToast();
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [rows, setRows] = useState<Tx[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [status, setStatus] = useState<string>('Semua');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({ ...EMPTY });
+
+  const [detail, setDetail] = useState<Tx | null>(null);
+  const [returnOpen, setReturnOpen] = useState<Tx | null>(null);
+  const [returnForm, setReturnForm] = useState({ condition: '', note: '', price: 0 });
+  const [returnBusy, setReturnBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Tx | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
 
-  // Review Modal
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [selected, setSelected] = useState<any>(null);
-  const [reviewAction, setReviewAction] = useState<'Approved' | 'Reject'>('Approved');
-  const [depositValue, setDepositValue] = useState('');
+  const canCreate = can('transaction_headset', 'create');
+  const canUpdate = can('transaction_headset', 'update');
+  const canDelete = can('transaction_headset', 'delete');
 
-  // Return Modal
-  const [isReturnOpen, setIsReturnOpen] = useState(false);
-  const [returnTarget, setReturnTarget] = useState<any>(null);
-  const [returnCondition, setReturnCondition] = useState('Good Condition');
-  const [returnPrice, setReturnPrice] = useState('');
-  const [returnNote, setReturnNote] = useState('');
-
-  const fetchTransactions = () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const query = new URLSearchParams({ page: String(page), limit: '25', search, status: statusFilter });
-    apiFetch(`/api/transactions/items?${query.toString()}`)
-      .then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((res) => { setTransactions(res.data || []); setPagination(res.pagination || { total: 0, totalPages: 1 }); setLoading(false); })
-      .catch(() => { toast('error', 'Gagal memuat data'); setLoading(false); });
-  };
-
-  const fetchPendingSubmissions = () => {
-    apiFetch('/api/transactions/vendor-submissions?status=Pending')
-      .then((res) => { if (!res.ok) return []; return res.json(); })
-      .then((data) => setSubmissions(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  };
-
-  useEffect(() => { fetchTransactions(); fetchPendingSubmissions(); }, [page, statusFilter]);
-
-  const handleReview = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
     try {
-      await apiFetch('/api/transactions/vendor-submissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, status: reviewAction, adminNote: `${reviewAction} oleh ${user?.name}` }) });
-      if (reviewAction === 'Approved') {
-        await apiFetch('/api/transactions/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: selected.date ? new Date(selected.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], nik: selected.nik, name: selected.karyawanName, vendor: selected.vendorName, project: selected.project, deposit: parseFloat(depositValue) || 100000, status: 'Used', condition: selected.headsetStatus || 'New Use', vendorSubmissionId: selected.id, updatedBy: user?.name }) });
+      const qs = new URLSearchParams({ page: String(page), pageSize: '10' });
+      if (search.trim()) qs.set('search', search.trim());
+      if (status && status !== 'Semua') qs.set('status', status);
+
+      const res = await apiFetch(`/api/transactions/items?${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat data headset');
+
+      setRows(json.data ?? []);
+      setPagination(json.pagination ?? { page: 1, pageSize: 10, total: 0, totalPages: 1 });
+    } catch (e: any) {
+      toast('error', e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, page, search, status, toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // ---------- Item 7: unduh template import ----------
+  const downloadTemplate = async (format: 'xlsx' | 'csv') => {
+    try {
+      const res = await apiFetch(`/api/transactions/items/template?format=${format}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Gagal membuat template');
       }
-      setIsReviewOpen(false); toast('success', reviewAction === 'Approved' ? 'Disetujui, headset Used' : 'Ditolak');
-      fetchTransactions(); fetchPendingSubmissions();
-    } catch (err: any) { toast('error', err.message || 'Gagal'); }
-    setSaving(false);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `template-import-headset-user.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('success', `Template .${format} berhasil diunduh.`);
+    } catch (e: any) {
+      toast('error', e.message);
+    }
   };
 
-  const handleReturn = async () => {
+  // ---------- Import ----------
+  const upload = async (file: File) => {
+    setUploading(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await apiFetch('/api/transactions/items/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal mengunggah file');
+
+      setImportResult(json);
+      toast(json.failed ? 'warning' : 'success', `Import selesai: ${json.success} berhasil, ${json.failed} gagal.`);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  // ---------- Approve -> Used ----------
+  const approve = async (tx: Tx) => {
+    try {
+      const res = await apiFetch('/api/transactions/items', {
+        method: 'PUT',
+        body: JSON.stringify({ id: tx.id, status: 'Used' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menyetujui');
+      toast('success', `${tx.nik} disetujui â€” status menjadi Used.`);
+      if (detail?.id === tx.id) setDetail({ ...tx, status: 'Used' });
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
+  };
+
+  const reject = async (tx: Tx) => {
+    try {
+      const res = await apiFetch('/api/transactions/items', {
+        method: 'PUT',
+        body: JSON.stringify({ id: tx.id, status: 'Reject' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menolak');
+      toast('success', `Pengajuan ${tx.nik} ditolak.`);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
+  };
+
+  // ---------- Item 11: Return dengan kondisi wajib ----------
+  const openReturn = (tx: Tx) => {
+    setReturnOpen(tx);
+    setReturnForm({ condition: '', note: '', price: tx.deposit ?? 0 });
+    setErrors({});
+  };
+
+  const submitReturn = async () => {
+    if (!returnOpen) return;
+    if (!returnForm.condition) {
+      setErrors({ condition: 'Kondisi pengembalian wajib dipilih (Good atau Damage).' });
+      return;
+    }
+    setReturnBusy(true);
+    try {
+      const res = await apiFetch('/api/transactions/items', {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: returnOpen.id,
+          returnCondition: returnForm.condition,
+          returnPrice: returnForm.price,
+          returnNote: returnForm.note || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memproses pengembalian');
+
+      toast(
+        'success',
+        returnForm.condition === 'Good'
+          ? 'Pengembalian diproses â€” stok Headset bertambah.'
+          : 'Pengembalian diproses â€” item dicatat sebagai Damage (stok tidak bertambah).',
+      );
+      setReturnOpen(null);
+      setDetail(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    } finally {
+      setReturnBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await apiFetch(`/api/transactions/items?id=${confirmDelete.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menghapus');
+      toast('success', 'Data headset dihapus.');
+      setConfirmDelete(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
+  };
+
+  const create = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const e: Record<string, string> = {};
+    if (!form.nik.trim()) e.nik = 'NIK wajib diisi.';
+    if (!form.name.trim()) e.name = 'Nama wajib diisi.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
     setSaving(true);
     try {
-      const res = await apiFetch('/api/transactions/items', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: returnTarget.id, status: 'Return', returnCondition, returnPrice: returnPrice ? parseFloat(returnPrice) : null, returnNote: returnNote || null, updatedBy: user?.name }) });
-      if (res.ok) { toast('success', 'Headset returned'); setIsReturnOpen(false); fetchTransactions(); }
-      else { const r = await res.json(); toast('error', r.error || 'Gagal'); }
-    } catch { toast('error', 'Gagal'); }
-    setSaving(false);
+      const res = await apiFetch('/api/transactions/items', { method: 'POST', body: JSON.stringify(form) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.details?.join(', ') || 'Gagal menyimpan');
+      toast('success', 'Pengajuan headset berhasil dibuat.');
+      setFormOpen(false);
+      setForm({ ...EMPTY });
+      setPage(1);
+      load();
+    } catch (err: any) {
+      toast('error', err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!canAccess('transaction_item')) {
-    return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3><p className="text-xs text-slate-500 mt-1">Role {role} tidak punya akses.</p></div>);
-  }
+  const columns: Column<Tx>[] = [
+    {
+      key: 'nik',
+      header: 'NIK',
+      cell: (r) => (
+        <button onClick={() => setDetail(r)} className="text-left font-mono text-[11.5px] font-semibold text-primary hover:underline">
+          {r.nik}
+        </button>
+      ),
+    },
+    {
+      key: 'name',
+      header: 'Nama',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.name}</p>
+          <p className="truncate text-[10.5px] text-muted-foreground">
+            {[r.project, r.vendor].filter(Boolean).join(' Â· ') || '-'}
+          </p>
+        </div>
+      ),
+    },
+    { key: 'date', header: 'Tanggal', cell: (r) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(r.date)}</span>, hideOnMobile: true },
+    {
+      key: 'item',
+      header: 'Item',
+      cell: (r) => <span className="text-[11.5px] text-muted-foreground">{r.itemName || '-'}</span>,
+      hideOnMobile: true,
+    },
+    { key: 'deposit', header: 'Deposit', numeric: true, cell: (r) => <span className="tabular-nums">{formatRupiah(r.deposit)}</span>, hideOnMobile: true },
+    { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      className: 'text-right',
+      cell: (r) => (
+        <div className="flex items-center justify-end gap-1">
+          {canUpdate && r.status === 'Pending' && (
+            <>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-success" title="Setujui (Used)" onClick={() => approve(r)}>
+                <Check className="h-4 w-4" />
+              </button>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Tolak" onClick={() => reject(r)}>
+                <X className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          {canUpdate && r.status === 'Used' && (
+            <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-primary" title="Return / Kembalikan" onClick={() => openReturn(r)}>
+              <Undo2 className="h-4 w-4" />
+            </button>
+          )}
+          {canDelete && r.status !== 'Used' && (
+            <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Hapus" onClick={() => setConfirmDelete(r)}>
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Headphones className="w-5 h-5 text-indigo-600" /><span>Headset User</span></h1>
-          <p className="text-xs text-slate-500 mt-0.5">Pengajuan dari vendor → Staff approve/reject → Approve dengan nilai deposit</p>
-        </div>
-        {role === 'SUPERADMIN' && (
-          <button onClick={() => { setUploadFile(null); setUploadResult(null); setIsUploadOpen(true); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Upload className="w-4 h-4" />Upload Excel</button>
-        )}
+    <div className="space-y-5">
+      <PageHeader
+        icon={Headphones}
+        title="Headset User"
+        description="Siklus peminjaman headset: Pending â†’ Used â†’ Good (stok bertambah) atau Damage (masuk daftar damage)."
+        actions={
+          <>
+            {/* Item 7 */}
+            <button className="xh-btn xh-btn-secondary" onClick={() => downloadTemplate('xlsx')} title="Unduh template Excel (.xlsx)">
+              <FileSpreadsheet className="h-4 w-4" />
+              Download Template
+            </button>
+            {canCreate && (
+              <button className="xh-btn xh-btn-secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                {uploading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Import
+              </button>
+            )}
+            {canCreate && (
+              <button className="xh-btn xh-btn-primary" onClick={() => { setForm({ ...EMPTY }); setErrors({}); setFormOpen(true); }}>
+                <Plus className="h-4 w-4" />
+                Pengajuan Headset
+              </button>
+            )}
+          </>
+        }
+      />
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) upload(f);
+        }}
+      />
+
+      {/* Info alur */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground">
+        <Info className="mt-px h-4 w-4 shrink-0" />
+        <p>
+          <strong>Used</strong> saat pengajuan disetujui Â· <strong>Return</strong> wajib memilih kondisi.{' '}
+          <strong>Good</strong> â†’ stok Headset bertambah, <strong>Damage</strong> â†’ masuk Daftar Damage tanpa menambah
+          stok. Status <strong>Used</strong> tidak dapat dihapus sebelum dikembalikan.
+        </p>
       </div>
 
-      {submissions.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <h3 className="text-sm font-bold text-amber-800 mb-3">Pengajuan Vendor Pending ({submissions.length})</h3>
-          <div className="space-y-2">
-            {submissions.map((sub) => (
-              <div key={sub.id} className="bg-white rounded-xl border border-amber-100 p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-slate-800">{sub.title}</div>
-                  <div className="text-[11px] text-slate-500">{sub.vendorName} | NIK: {sub.nik} | {sub.karyawanName} | Project: {sub.project}</div>
-                </div>
-                <button onClick={() => { setSelected(sub); setReviewAction('Approved'); setDepositValue('100000'); setIsReviewOpen(true); }} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg">Review</button>
-              </div>
-            ))}
-          </div>
-        </div>
+      {importResult && (
+        <Panel
+          title="Hasil Import"
+          description={`${importResult.success} baris berhasil, ${importResult.failed} baris gagal.`}
+          actions={
+            <button className="xh-btn xh-btn-ghost xh-btn-sm" onClick={() => setImportResult(null)}>
+              <X className="h-3.5 w-3.5" />
+              Tutup
+            </button>
+          }
+        >
+          {importResult.errors.length > 0 ? (
+            <ul className="max-h-40 space-y-1 overflow-y-auto scrollbar-thin text-[11.5px] text-danger-subtle-foreground">
+              {importResult.errors.map((e, i) => (
+                <li key={i}>â€¢ {e}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[12px] text-success-subtle-foreground">Semua baris berhasil di-import.</p>
+          )}
+        </Panel>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row gap-4">
-        <div className="flex gap-1.5 flex-wrap">
-          {['', 'Pending', 'Used', 'Reject', 'Return'].map((s) => (
-            <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${statusFilter === s ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{s || 'Semua'}</button>
-          ))}
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); fetchTransactions(); }} className="relative flex-1 max-w-xs">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border rounded-xl text-xs" />
-        </form>
+      {/* Tab status */}
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => {
+              setStatus(t);
+              setPage(1);
+            }}
+            className={
+              status === t
+                ? 'xh-btn xh-btn-primary h-8 px-3 text-[11.5px]'
+                : 'xh-btn xh-btn-secondary h-8 px-3 text-[11.5px]'
+            }
+          >
+            {t}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px]">
-            <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-2 px-3">ID</th><th className="py-2 px-3">Tgl</th><th className="py-2 px-3">NIK</th><th className="py-2 px-3">Nama</th><th className="py-2 px-3">Project</th><th className="py-2 px-3">Vendor</th><th className="py-2 px-3">Deposit</th><th className="py-2 px-3 text-center">Status</th><th className="py-2 px-3 text-center">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={9} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
-                transactions.length === 0 ? <tr><td colSpan={9} className="py-8 text-center text-slate-400">Tidak ada data.</td></tr> :
-                  transactions.map((tx) => {
-                    const sc: Record<string, string> = { Used: 'bg-amber-50 text-amber-700', Return: 'bg-emerald-50 text-emerald-700', Reject: 'bg-rose-50 text-rose-700', Pending: 'bg-slate-100 text-slate-600' };
-                    return (
-                      <tr key={tx.id} className="hover:bg-slate-50/80">
-                        <td className="py-2 px-3 text-slate-400 font-mono">#{tx.id}</td>
-                        <td className="py-2 px-3 text-slate-500 whitespace-nowrap">{tx.date}</td>
-                        <td className="py-2 px-3 font-mono text-indigo-600">{tx.nik}</td>
-                        <td className="py-2 px-3 font-semibold">{tx.name}</td>
-                        <td className="py-2 px-3">{tx.project}</td>
-                        <td className="py-2 px-3 text-slate-600">{tx.vendor}</td>
-                        <td className="py-2 px-3">Rp {tx.deposit?.toLocaleString('id-ID')}</td>
-                        <td className="py-2 px-3 text-center"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sc[tx.status] || 'bg-slate-100'}`}>{tx.status}</span></td>
-                        <td className="py-2 px-3 text-center">
-                          {tx.status === 'Used' && (
-                            <button onClick={() => { setReturnTarget(tx); setReturnCondition('Good Condition'); setReturnPrice(''); setReturnNote(''); setIsReturnOpen(true); }} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] border border-emerald-200 flex items-center gap-1"><RotateCcw className="w-3 h-3" />Return</button>
-                          )}
-                          {tx.status !== 'Used' && tx.status !== 'Return' && (
-                            <button onClick={() => { if (confirm('Aktifkan kembali?')) { apiFetch('/api/transactions/items', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tx.id, status: 'Used', updatedBy: user?.name }) }).then(() => fetchTransactions()); } }} className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-[10px] border border-amber-200">Aktifkan</button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-3 bg-slate-50 border-t flex items-center justify-between text-xs">
-          <span>Total: {pagination.total}</span>
-          <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="p-1.5 rounded-lg border bg-white disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="font-semibold py-1.5">{page} / {pagination.totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={page >= pagination.totalPages} className="p-1.5 rounded-lg border bg-white disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
-      </div>
-
-      {/* Upload Excel Modal - SuperAdmin Only */}
-      {isUploadOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b">
-              <h3 className="text-sm font-bold flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-emerald-600" />Upload Excel Headset User</h3>
-              <button onClick={() => setIsUploadOpen(false)}><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border">
-                <p className="font-semibold mb-1">Format Excel (.xlsx):</p>
-                <p className="text-slate-500">date | nik | name | vendor | project | deposit | condition | status | employeeCategory | note</p>
-                <p className="text-slate-400 text-[10px] mt-1">Baris pertama = header. Baris kedua mulai data.</p>
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Pilih File Excel</label>
-                <input type="file" accept=".xlsx,.xls" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" />
-              </div>
-
-              {uploadResult && (
-                <div className="p-3 rounded-xl border">
-                  <div className="font-semibold mb-2">Hasil Upload:</div>
-                  <div className="flex gap-4">
-                    <span className="text-emerald-600 font-bold">{uploadResult.success} sukses</span>
-                    <span className="text-rose-600 font-bold">{uploadResult.failed} gagal</span>
-                  </div>
-                  {uploadResult.errors.length > 0 && (
-                    <div className="mt-2 max-h-32 overflow-y-auto">
-                      {uploadResult.errors.slice(0, 10).map((err: string, i: number) => (
-                        <p key={i} className="text-rose-600 text-[10px]">{err}</p>
-                      ))}
-                      {uploadResult.errors.length > 10 && <p className="text-slate-400 text-[10px]">...dan {uploadResult.errors.length - 10} error lainnya</p>}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsUploadOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button
-                  onClick={async () => {
-                    if (!uploadFile) { toast('warning', 'Pilih file Excel dulu'); return; }
-                    setUploading(true);
-                    try {
-                      const formData = new FormData();
-                      formData.append('file', uploadFile);
-                      const res = await apiFetch('/api/transactions/items/upload', { method: 'POST', body: formData });
-                      const result = await res.json();
-                      if (res.ok) {
-                        setUploadResult(result);
-                        toast('success', `Upload selesai: ${result.success} sukses, ${result.failed} gagal`);
-                        fetchTransactions(); fetchPendingSubmissions();
-                      } else {
-                        toast('error', result.error || 'Upload gagal');
-                      }
-                    } catch (err: any) {
-                      toast('error', err.message);
+      <Panel padded={false}>
+        <Toolbar>
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari NIK, nama, vendor, atau projectâ€¦" />
+        </Toolbar>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TableSkeleton rows={6} cols={6} />
+          ) : (
+            <>
+              <DataTable
+                columns={columns}
+                rows={rows}
+                rowKey={(r) => r.id}
+                empty={
+                  <EmptyState
+                    icon={Headphones}
+                    title="Belum ada data headset"
+                    description="Buat pengajuan headset baru, atau unduh template Excel untuk mengimpor banyak data sekaligus."
+                    action={
+                      canCreate ? (
+                        <div className="flex gap-2">
+                          <button className="xh-btn xh-btn-secondary" onClick={() => downloadTemplate('xlsx')}>
+                            <Download className="h-4 w-4" />
+                            Download Template
+                          </button>
+                          <button className="xh-btn xh-btn-primary" onClick={() => setFormOpen(true)}>
+                            <Plus className="h-4 w-4" />
+                            Pengajuan Headset
+                          </button>
+                        </div>
+                      ) : undefined
                     }
-                    setUploading(false);
-                  }}
-                  disabled={uploading}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold disabled:opacity-50"
+                  />
+                }
+              />
+              <Pagination {...pagination} onPageChange={setPage} />
+            </>
+          )}
+        </div>
+      </Panel>
+
+      {/* ---------- Form ---------- */}
+      <Modal
+        open={formOpen}
+        onClose={() => !saving && setFormOpen(false)}
+        title="Pengajuan Headset"
+        description="Pengajuan baru selalu berstatus Pending hingga disetujui."
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setFormOpen(false)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={create as any}>
+              Simpan Pengajuan
+            </SubmitButton>
+          </>
+        }
+      >
+        <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
+          <Field label="NIK" required error={errors.nik}>
+            <input className="xh-input" value={form.nik} onChange={(e) => setForm({ ...form, nik: e.target.value })} placeholder="Nomor induk karyawan" />
+          </Field>
+          <Field label="Nama Karyawan" required error={errors.name}>
+            <input className="xh-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama lengkap" />
+          </Field>
+          <Field label="Tanggal">
+            <input type="date" className="xh-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          </Field>
+          <Field label="Kategori Karyawan">
+            <select className="xh-select" value={form.employeeCategory} onChange={(e) => setForm({ ...form, employeeCategory: e.target.value })}>
+              <option>New Employee</option>
+              <option>Existing Employee</option>
+            </select>
+          </Field>
+          <Field label="Kondisi">
+            <select className="xh-select" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+              {VALID_CONDITIONS.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Vendor">
+            <input className="xh-input" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+          </Field>
+          <Field label="Project">
+            <input className="xh-input" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
+          </Field>
+          <Field label="Deposit" hint="Nominal Rupiah">
+            <MoneyInput value={form.deposit} onChange={(n) => setForm({ ...form, deposit: n })} />
+          </Field>
+          <Field label="Catatan" className="sm:col-span-2">
+            <textarea className="xh-input min-h-[72px] py-2" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </Field>
+        </form>
+      </Modal>
+
+      {/* ---------- Return (kondisi wajib) ---------- */}
+      <Modal
+        open={!!returnOpen}
+        onClose={() => !returnBusy && setReturnOpen(null)}
+        title="Kembalikan Headset"
+        description="Kondisi pengembalian wajib dipilih dan menentukan perlakuan stok."
+        size="sm"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setReturnOpen(null)} disabled={returnBusy}>
+              Batal
+            </button>
+            <SubmitButton loading={returnBusy} onClick={submitReturn}>
+              Proses Pengembalian
+            </SubmitButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {returnOpen && (
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-[12px] text-muted-foreground-strong">
+              <p><span className="text-muted-foreground">NIK</span> Â· <span className="font-mono">{returnOpen.nik}</span></p>
+              <p><span className="text-muted-foreground">Nama</span> Â· {returnOpen.name}</p>
+              <p><span className="text-muted-foreground">Item</span> Â· {returnOpen.itemName || 'Headset'}</p>
+            </div>
+          )}
+
+          <Field label="Kondisi Pengembalian" required error={errors.condition}>
+            <div className="grid gap-2">
+              {VALID_RETURN_CONDITIONS.map((c) => (
+                <label
+                  key={c}
+                  className={
+                    returnForm.condition === c
+                      ? 'flex cursor-pointer items-start gap-2.5 rounded-lg border border-primary bg-primary-subtle px-3 py-2.5'
+                      : 'flex cursor-pointer items-start gap-2.5 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-muted'
+                  }
                 >
-                  {uploading ? 'Uploading...' : 'Upload'}
+                  <input
+                    type="radio"
+                    name="returnCondition"
+                    value={c}
+                    checked={returnForm.condition === c}
+                    onChange={() => setReturnForm({ ...returnForm, condition: c })}
+                    className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-semibold text-foreground">{c}</span>
+                    <span className="block text-[11px] text-muted-foreground">{RETURN_CONDITION_LABELS[c]}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Field>
+
+          {returnForm.condition === 'Damage' && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-[11.5px] text-warning-subtle-foreground">
+              <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
+              <p>Item akan dicatat pada <strong>Daftar Damage</strong> dan <strong>tidak menambah</strong> stok inventori.</p>
+            </div>
+          )}
+
+          <Field label="Nilai Kompensasi" hint="Opsional â€” diisi bila ada potongan deposit">
+            <MoneyInput value={returnForm.price} onChange={(n) => setReturnForm({ ...returnForm, price: n })} />
+          </Field>
+
+          <Field label="Catatan Pengembalian">
+            <textarea
+              className="xh-input min-h-[72px] py-2"
+              value={returnForm.note}
+              onChange={(e) => setReturnForm({ ...returnForm, note: e.target.value })}
+              placeholder="Kondisi fisik, kelengkapan aksesori, dll."
+            />
+          </Field>
+        </div>
+      </Modal>
+
+      {/* ---------- Detail ---------- */}
+      <Modal
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title="Detail Headset User"
+        size="lg"
+        footer={
+          detail && (
+            <>
+              <button className="xh-btn xh-btn-secondary" onClick={() => setDetail(null)}>
+                Tutup
+              </button>
+              {canUpdate && detail.status === 'Pending' && (
+                <button className="xh-btn xh-btn-primary" onClick={() => { approve(detail); }}>
+                  Setujui (Used)
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Review Modal */}
-      {isReviewOpen && selected && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 className="text-sm font-bold mb-4">Review Pengajuan {selected.submissionCode}</h3>
-            <div className="p-3 bg-slate-50 rounded-xl mb-4 text-xs">
-              <div className="font-bold text-slate-800">{selected.title}</div>
-              <div className="text-slate-600 mt-2 font-semibold">Vendor: {selected.vendorName}</div>
-              <div className="text-slate-500 mt-1">NIK: {selected.nik || '-'}</div>
-              <div className="text-slate-500">Nama Karyawan: {selected.karyawanName || '-'}</div>
-              <div className="text-slate-500">Project: {selected.project || '-'}</div>
-              <div className="text-slate-500">Estimasi: Rp {selected.proposedPrice?.toLocaleString('id-ID')}</div>
-            </div>
-            <form onSubmit={handleReview} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Keputusan</label>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setReviewAction('Approved')} className={`flex-1 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1 ${reviewAction === 'Approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200'}`}><CheckCircle className="w-4 h-4" />Approve</button>
-                  <button type="button" onClick={() => setReviewAction('Reject')} className={`flex-1 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1 ${reviewAction === 'Reject' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200'}`}><XCircle className="w-4 h-4" />Reject</button>
-                </div>
-              </div>
-              {reviewAction === 'Approved' && (
-                <div><label className="block font-semibold mb-1">Nilai Deposit (Rp)</label><input type="number" value={depositValue} onChange={(e) => setDepositValue(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
               )}
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsReviewOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Memproses...' : reviewAction === 'Approved' ? 'Approve & Buat Used' : 'Reject'}</button>
-              </div>
-            </form>
+              {canUpdate && detail.status === 'Used' && (
+                <button className="xh-btn xh-btn-primary" onClick={() => openReturn(detail)}>
+                  <Undo2 className="h-4 w-4" />
+                  Return
+                </button>
+              )}
+            </>
+          )
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <DescList
+              items={[
+                { label: 'NIK', value: <span className="font-mono">{detail.nik}</span> },
+                { label: 'Nama', value: detail.name },
+                { label: 'Status', value: <StatusBadge status={detail.status} /> },
+                { label: 'Tanggal', value: formatDate(detail.date) },
+                { label: 'Kategori Karyawan', value: detail.employeeCategory },
+                { label: 'Item', value: detail.itemName || '-' },
+                { label: 'Kondisi', value: detail.condition },
+                { label: 'Vendor', value: detail.vendor },
+                { label: 'Project', value: detail.project || '-' },
+                { label: 'Deposit', value: formatRupiah(detail.deposit) },
+                { label: 'Disetujui oleh', value: detail.approvedBy || '-' },
+                { label: 'Dikembalikan', value: detail.returnedAt ? formatDate(detail.returnedAt) : '-' },
+              ]}
+            />
+            {detail.note && <p className="text-[12px] text-muted-foreground">Catatan: {detail.note}</p>}
+            {detail.returnNote && (
+              <p className="text-[12px] text-muted-foreground">Catatan return: {detail.returnNote}</p>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
-      {/* Return Modal */}
-      {isReturnOpen && returnTarget && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 className="text-sm font-bold mb-4">Return Headset - {returnTarget.name}</h3>
-            <div className="p-3 bg-slate-50 rounded-xl mb-4 text-xs">
-              <div className="font-semibold">{returnTarget.vendor} | {returnTarget.nik}</div>
-              <div className="text-slate-500">Project: {returnTarget.project}</div>
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Kondisi Headset</label>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setReturnCondition('Good Condition')} className={`flex-1 py-2 rounded-xl border text-xs font-semibold ${returnCondition === 'Good Condition' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200'}`}>Good Condition</button>
-                  <button type="button" onClick={() => setReturnCondition('Damaged/Missing')} className={`flex-1 py-2 rounded-xl border text-xs font-semibold ${returnCondition === 'Damaged/Missing' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200'}`}>Damaged/Missing</button>
-                </div>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Harga Headset (opsional)</label>
-                <input type="number" value={returnPrice} onChange={(e) => setReturnPrice(e.target.value)} placeholder="Contoh: 150000" className="w-full px-3 py-2 bg-slate-50 border rounded-xl" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Note (opsional)</label>
-                <textarea rows={2} value={returnNote} onChange={(e) => setReturnNote(e.target.value)} placeholder="Catatan return..." className="w-full px-3 py-2 bg-slate-50 border rounded-xl"></textarea>
-              </div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsReturnOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button onClick={handleReturn} disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Memproses...' : 'Submit Return'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Hapus data headset?"
+        message={`Data ${confirmDelete?.nik} â€” ${confirmDelete?.name} akan dihapus permanen.`}
+        confirmLabel="Hapus"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

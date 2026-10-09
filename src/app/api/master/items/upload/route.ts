@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, badRequest, serverError } from '@/lib/api';
@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 import * as XLSX from 'xlsx';
 
 export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'master_item', 'create');
+  const authError = await requirePermission(req, 'master_item', 'create');
   if (authError) return authError;
 
   try {
@@ -31,6 +31,19 @@ export async function POST(req: NextRequest) {
         const namaItem = String(row.namaItem || row['Nama Item'] || row.name || '').trim();
         const brand = String(row.brand || row.Brand || '-').trim();
 
+        // Harga opsional (item 12) — kolom "price" / "harga".
+        const priceRaw = row.price ?? row.Price ?? row.harga ?? row.Harga;
+        const price =
+          priceRaw === undefined || priceRaw === null || String(priceRaw).trim() === ''
+            ? null
+            : parseFloat(String(priceRaw).replace(/[^\d.]/g, ''));
+
+        if (price !== null && (!Number.isFinite(price) || price < 0)) {
+          results.failed++;
+          results.errors.push(`Baris ${i + 2}: harga harus berupa angka dan tidak boleh negatif`);
+          continue;
+        }
+
         if (!code || !namaItem) {
           results.failed++;
           results.errors.push(`Baris ${i + 2}: Code dan Nama Item wajib diisi`);
@@ -43,12 +56,12 @@ export async function POST(req: NextRequest) {
           // Update existing
           await prisma.masterItem.update({
             where: { code },
-            data: { typeItem, namaItem, brand, updateAt: new Date(), updateBy: 'SuperAdmin (Excel)' },
+            data: { typeItem, namaItem, brand, price, updateAt: new Date(), updateBy: 'SuperAdmin (Excel)' },
           });
         } else {
           // Create new
           await prisma.masterItem.create({
-            data: { code, typeItem, namaItem, brand, updateBy: 'SuperAdmin (Excel)' },
+            data: { code, typeItem, namaItem, brand, price, updateBy: 'SuperAdmin (Excel)' },
           });
         }
         results.success++;

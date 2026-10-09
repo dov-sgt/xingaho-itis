@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Xinghao">
+  <defs>
+    <linearGradient id="xh-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="55%" stop-color="#4338CA"/>
+      <stop offset="100%" stop-color="#312E81"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#xh-g)"/>
+
+  <!-- concentric orbit arcs suggesting connectivity / IT infrastructure -->
+  <path d="M40 168a96 96 0 0 1 176 0" fill="none" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="128" cy="46" r="9" fill="#FFFFFF" fill-opacity=".55"/>
+
+  <!-- X -->
+  <path d="M74 92 L118 132 L74 172" fill="none" stroke="#FFFFFF" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- H -->
+  <path d="M134 92 V172 M182 92 V172 M134 132 H182" fill="none" stroke="#FFFFFF" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

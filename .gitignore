@@ -34,3 +34,6 @@ prisma/dev.db.backup
 
 # OS
 Thumbs.db
+
+# Logo PNG asli (opsional) — taruh di sini bila tersedia
+public/pict/xh_logo_1.png

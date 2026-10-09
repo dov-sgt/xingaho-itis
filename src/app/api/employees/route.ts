@@ -1,70 +1,47 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
-import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, collectErrors } from '@/lib/validation';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
+import { EMPLOYEE_STATUSES } from '@/lib/options';
 
-export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'read');
-  if (authError) return authError;
-  try {
-    const employees = await prisma.employee.findMany({ orderBy: { id: 'desc' } });
-    return ok(employees);
-  } catch (error: any) { return serverError(error.message); }
-}
+const STATUS = EMPLOYEE_STATUSES;
 
-export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'create');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { nik, name, department, position, joinDate, phone, email } = body;
-    const errors = collectErrors([
-      validateRequired(nik, 'NIK'), validateRequired(name, 'Nama'),
-      validateRequired(department, 'Department'), validateRequired(position, 'Position'),
-    ]);
-    if (errors.length > 0) return validationError(errors);
+const handlers = buildCrudHandlers({
+  model: 'employee',
+  feature: 'user_management',
+  searchFields: ['employeeCode', 'nik', 'name', 'department', 'position'],
+  statusField: 'status',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.nik) e.push('NIK wajib diisi.');
+    if (!body.name) e.push('Nama wajib diisi.');
+    if (!body.department) e.push('Departemen wajib diisi.');
+    if (!body.position) e.push('Posisi wajib diisi.');
+    if (!body.joinDate) e.push('Tanggal masuk wajib diisi.');
+    if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
+    return e;
+  },
+  toCreate: async (body) => ({
+    employeeCode: await nextCode('employee', 'EMP', 4),
+    nik: String(body.nik).trim(),
+    name: body.name,
+    department: body.department,
+    position: body.position,
+    joinDate: new Date(body.joinDate),
+    status: body.status || 'Active',
+    phone: body.phone || null,
+    email: body.email || null,
+  }),
+  toUpdate: (body) => ({
+    nik: String(body.nik).trim(),
+    name: body.name,
+    department: body.department,
+    position: body.position,
+    joinDate: body.joinDate ? new Date(body.joinDate) : undefined,
+    ...(body.status ? { status: body.status } : {}),
+    phone: body.phone || null,
+    email: body.email || null,
+  }),
+});
 
-    const count = await prisma.employee.count();
-    const employeeCode = `EMP-2026-${(count + 1).toString().padStart(4, '0')}`;
-
-    const employee = await prisma.employee.create({
-      data: { employeeCode, nik, name, department, position, joinDate: new Date(joinDate), phone: phone || null, email: email || null },
-    });
-    return ok(employee, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function PUT(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'update');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { id, nik, name, department, position, joinDate, status, phone, email } = body;
-    if (!id) return badRequest('ID is required');
-    const data: any = {};
-    if (nik) data.nik = nik;
-    if (name) data.name = name;
-    if (department) data.department = department;
-    if (position) data.position = position;
-    if (joinDate) data.joinDate = new Date(joinDate);
-    if (status) data.status = status;
-    if (phone !== undefined) data.phone = phone;
-    if (email !== undefined) data.email = email;
-    const updated = await prisma.employee.update({ where: { id: Number(id) }, data });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function DELETE(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'delete');
-  if (authError) return authError;
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return badRequest('ID is required');
-    await prisma.employee.delete({ where: { id: Number(id) } });
-    return ok({ success: true });
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

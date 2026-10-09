@@ -1,44 +1,37 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { ok, badRequest, serverError } from '@/lib/api';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers } from '@/lib/crud-route';
+import { toNumber, isNegative } from '@/lib/documents';
+import { PAYMENT_STATUSES } from '@/lib/options';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const agenName = searchParams.get('agenName') || '';
-    const dateFrom = searchParams.get('date_from') || '';
-    const dateTo = searchParams.get('date_to') || '';
-    const where: any = {};
-    if (agenName) where.agenName = { contains: agenName };
-    if (dateFrom || dateTo) {
-      where.date = {};
-      if (dateFrom) where.date.gte = new Date(dateFrom);
-      if (dateTo) where.date.lte = new Date(dateTo);
-    }
-    const achievements = await prisma.paymentAchievement.findMany({ where, orderBy: { id: 'desc' } });
-    return ok(achievements);
-  } catch (error: any) { return serverError(error.message); }
-}
+const STATUS = PAYMENT_STATUSES;
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { agenName, date, amount } = body;
-    if (!agenName || !amount) return badRequest('Nama agen dan jumlah wajib diisi');
-    const achievement = await prisma.paymentAchievement.create({
-      data: { agenName, date: date ? new Date(date) : new Date(), amount: parseFloat(amount) || 0 },
-    });
-    return ok(achievement, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
+const handlers = buildCrudHandlers({
+  model: 'paymentAchievement',
+  feature: 'transaction_stockout',
+  searchFields: ['agenName', 'status'],
+  statusField: 'status',
+  dateField: 'date',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.agenName) e.push('Nama agen wajib diisi.');
+    if (isNegative(body.amount)) e.push('Nominal tidak boleh negatif.');
+    if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
+    return e;
+  },
+  toCreate: (body) => ({
+    agenName: body.agenName,
+    date: body.date ? new Date(body.date) : new Date(),
+    amount: toNumber(body.amount, 0),
+    status: body.status || 'Pending',
+  }),
+  toUpdate: (body) => ({
+    ...(body.date ? { date: new Date(body.date) } : {}),
+    agenName: body.agenName,
+    amount: toNumber(body.amount, 0),
+    ...(body.status ? { status: body.status } : {}),
+  }),
+});
 
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { id, status } = body;
-    if (!id) return badRequest('ID is required');
-    const updated = await prisma.paymentAchievement.update({ where: { id: Number(id) }, data: { status } });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

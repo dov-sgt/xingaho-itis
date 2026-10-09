@@ -1,223 +1,515 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { FileText, Plus, ShieldAlert, X, Edit, Trash2 } from 'lucide-react';
+import { PageHeader, Panel, Field, EmptyState, TableSkeleton, DescList } from '@/components/ui/layout';
+import { DataTable, Column, StatusBadge, CodeBadge, Toolbar, SearchInput } from '@/components/ui/data-display';
+import { Modal, ConfirmDialog, MoneyInput, SubmitButton } from '@/components/ui/form';
+import { formatRupiah, formatDate } from '@/lib/format';
+import { HEADSET_ITEM_CATEGORY } from '@/lib/config';
+import { FileText, Plus, Info, Eye, Trash2, Check, X, PackageSearch } from 'lucide-react';
 
-interface Vendor {
+type Submission = {
   id: number;
-  code: string;
-  name: string;
-  serviceType: string | null;
+  submissionCode: string;
+  date: string;
+  vendorName: string;
+  nik: string | null;
+  karyawanName: string | null;
+  project: string | null;
+  title: string;
+  description: string | null;
+  category: string;
+  proposedPrice: number;
   status: string;
-}
+  adminNote: string | null;
+  namaPembuat: string | null;
+  itemCode: string | null;
+  itemName: string | null;
+  priceSnapshot: number | null;
+  approvedAt: string | null;
+};
+
+type CatalogItem = { code: string; namaItem: string; brand: string; price: number | null; typeItem: string };
+
+const CATEGORIES = ['Headset', 'Laptop', 'Aksesoris', 'Printer', 'Lainnya'];
+
+/** Kategori Headset mewajibkan pemilihan item katalog (item 13). */
+const requiresItem = (c: string) => c.trim().toLowerCase() === 'headset';
 
 export default function VendorSubmissionsPage() {
-  const { can, role, canAccess, user, apiFetch } = useAuth();
+  const { can, apiFetch, user } = useAuth();
   const { toast } = useToast();
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+
+  const [rows, setRows] = useState<Submission[]>([]);
+  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSubmission, setEditingSubmission] = useState<any>(null);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Filters
-  const [searchVendor, setSearchVendor] = useState('');
-  const [searchProject, setSearchProject] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-
-  const [formData, setFormData] = useState({
-    vendorName: '', description: '', category: 'Pengajuan Headset',
-    proposedPrice: '', nik: '', karyawanName: '', project: '', date: ''
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({
+    namaPembuat: '',
+    vendorName: '',
+    title: '',
+    description: '',
+    category: 'Headset',
+    itemCode: '',
+    proposedPrice: 0,
+    nik: '',
+    karyawanName: '',
+    project: '',
   });
 
-  const fetchSubmissions = () => {
+  const [detail, setDetail] = useState<Submission | null>(null);
+  const [adminNote, setAdminNote] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const canCreate = can('vendor_submission', 'create');
+  const canUpdate = can('vendor_submission', 'update');
+  const canDelete = can('vendor_submission', 'delete');
+
+  const load = useCallback(async () => {
     setLoading(true);
-    const query = new URLSearchParams({ vendorName: searchVendor, project: searchProject, status: statusFilter, date_from: dateFrom, date_to: dateTo });
-    apiFetch(`/api/transactions/vendor-submissions?${query.toString()}`)
-      .then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => { setSubmissions(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => { toast('error', 'Gagal memuat'); setLoading(false); });
-  };
+    try {
+      const qs = new URLSearchParams();
+      if (search.trim()) qs.set('search', search.trim());
+      if (status) qs.set('status', status);
 
-  const fetchVendors = () => {
-    apiFetch('/api/master/vendors')
-      .then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => setVendors(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  };
+      const res = await apiFetch(`/api/transactions/vendor-submissions?${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat pengajuan');
+      setRows(Array.isArray(json) ? json : (json.data ?? []));
+    } catch (e: any) {
+      toast('error', e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, search, status, toast]);
 
-  useEffect(() => { fetchSubmissions(); fetchVendors(); }, [statusFilter]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleOpenAdd = () => {
-    setEditingSubmission(null);
-    setFormData({ vendorName: '', description: '', category: 'Pengajuan Headset', proposedPrice: '', nik: '', karyawanName: '', project: '', date: '' });
-    setErrorMsg('');
-    setIsModalOpen(true);
-  };
+  // Katalog item kategori Accessories (item 13).
+  useEffect(() => {
+    apiFetch(`/api/master/items?category=${encodeURIComponent(HEADSET_ITEM_CATEGORY)}`)
+      .then((r) => r.json())
+      .then((d) => setCatalog(Array.isArray(d) ? d : []))
+      .catch(() => setCatalog([]));
+  }, [apiFetch]);
 
-  const handleOpenEdit = (sub: any) => {
-    setEditingSubmission(sub);
-    setFormData({
-      vendorName: sub.vendorName || '', description: sub.description || '',
-      category: sub.category || 'Pengajuan Headset', proposedPrice: String(sub.proposedPrice || ''),
-      nik: sub.nik || '', karyawanName: sub.karyawanName || '', project: sub.project || '',
-      date: sub.date ? new Date(sub.date).toISOString().split('T')[0] : ''
+  const openCreate = () => {
+    setForm({
+      namaPembuat: user?.name ?? '',
+      vendorName: 'Swapro',
+      title: '',
+      description: '',
+      category: 'Headset',
+      itemCode: '',
+      proposedPrice: 0,
+      nik: '',
+      karyawanName: '',
+      project: '',
     });
-    setErrorMsg('');
-    setIsModalOpen(true);
+    setErrors({});
+    setFormOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault(); setErrorMsg(''); setSaving(true);
+  const submit = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const e: Record<string, string> = {};
+    if (!form.namaPembuat.trim()) e.namaPembuat = 'Nama Pembuat wajib diisi.';
+    if (!form.vendorName.trim()) e.vendorName = 'Vendor wajib diisi.';
+    if (!form.title.trim()) e.title = 'Judul pengajuan wajib diisi.';
+    // Item 13: validasi Headset tanpa item terpilih ditolak.
+    if (requiresItem(form.category) && !form.itemCode) {
+      e.itemCode = `Kategori Headset wajib memilih Nama Item dari kategori ${HEADSET_ITEM_CATEGORY}.`;
+    }
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setSaving(true);
     try {
-      const url = '/api/transactions/vendor-submissions';
-      const method = editingSubmission ? 'PUT' : 'POST';
-      const payload = editingSubmission
-        ? { id: editingSubmission.id, ...formData, date: formData.date || new Date().toISOString() }
-        : { ...formData, date: formData.date || new Date().toISOString() };
-      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const result = await res.json();
-      if (!res.ok) { setErrorMsg(result.error); setSaving(false); return; }
-      setIsModalOpen(false);
-      toast('success', editingSubmission ? 'Diperbarui' : 'Pengajuan dikirim');
-      fetchSubmissions();
-    } catch (err: any) { setErrorMsg(err.message); }
-    setSaving(false);
+      const res = await apiFetch('/api/transactions/vendor-submissions', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, itemCode: form.itemCode || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.details?.join(', ') || 'Gagal menyimpan');
+
+      toast('success', `Pengajuan ${json.submissionCode} berhasil dibuat.`);
+      setFormOpen(false);
+      load();
+    } catch (err: any) {
+      toast('error', err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Hapus?')) return;
+  const decide = async (s: Submission, next: 'Approved' | 'Rejected') => {
+    setBusy(true);
     try {
-      const res = await apiFetch(`/api/transactions/vendor-submissions?id=${id}`, { method: 'DELETE' });
-      if (res.ok) { toast('success', 'Dihapus'); fetchSubmissions(); }
-      else { const r = await res.json(); toast('error', r.error || 'Gagal'); }
-    } catch { toast('error', 'Gagal'); }
+      const res = await apiFetch('/api/transactions/vendor-submissions', {
+        method: 'PUT',
+        body: JSON.stringify({ id: s.id, status: next, adminNote: adminNote || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memproses pengajuan');
+
+      toast(
+        'success',
+        next === 'Approved'
+          ? `Pengajuan disetujui${json.transactionItemId ? ' â€” headset tercatat dengan status Used.' : '.'}`
+          : 'Pengajuan ditolak.',
+      );
+      setDetail(null);
+      setAdminNote('');
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  if (!canAccess('vendor_submission')) {
-    return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3></div>);
-  }
-
-  const canEdit = (sub: any) => {
-    if (role === 'AGEN') return sub.status === 'Pending';
-    return can('vendor_submission', 'update');
+  const remove = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await apiFetch(`/api/transactions/vendor-submissions?id=${confirmDelete.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menghapus');
+      toast('success', 'Pengajuan dihapus.');
+      setConfirmDelete(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
   };
+
+  const selectedItem = catalog.find((c) => c.code === form.itemCode) ?? null;
+
+  const columns: Column<Submission>[] = [
+    {
+      key: 'code',
+      header: 'No. Pengajuan',
+      cell: (r) => (
+        <button onClick={() => setDetail(r)} className="text-left font-mono text-[11.5px] font-semibold text-primary hover:underline">
+          {r.submissionCode}
+        </button>
+      ),
+    },
+    {
+      key: 'title',
+      header: 'Judul',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.title}</p>
+          <p className="truncate text-[10.5px] text-muted-foreground">{r.itemName || r.description || '-'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'namaPembuat',
+      header: 'Nama Pembuat',
+      cell: (r) => <span className="text-[12px] text-muted-foreground-strong">{r.namaPembuat || '-'}</span>,
+    },
+    { key: 'category', header: 'Kategori', cell: (r) => <CodeBadge>{r.category}</CodeBadge>, hideOnMobile: true },
+    {
+      key: 'price',
+      header: 'Estimasi',
+      numeric: true,
+      cell: (r) => <span className="tabular-nums">{formatRupiah(r.proposedPrice)}</span>,
+      hideOnMobile: true,
+    },
+    { key: 'date', header: 'Tanggal', cell: (r) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(r.date)}</span>, hideOnMobile: true },
+    { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      className: 'text-right',
+      cell: (r) => (
+        <div className="flex items-center justify-end gap-1">
+          <button className="xh-btn xh-btn-ghost h-8 w-8 p-0" title="Lihat detail" onClick={() => { setDetail(r); setAdminNote(r.adminNote ?? ''); }}>
+            <Eye className="h-4 w-4" />
+          </button>
+          {canUpdate && r.status === 'Pending' && (
+            <>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-success" title="Setujui" onClick={() => decide(r, 'Approved')}>
+                <Check className="h-4 w-4" />
+              </button>
+              <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Tolak" onClick={() => decide(r, 'Rejected')}>
+                <X className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          {canDelete && (
+            <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-danger" title="Hapus" onClick={() => setConfirmDelete(r)}>
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><FileText className="w-5 h-5 text-indigo-600" /><span>Pengajuan Vendor</span></h1>
-          <p className="text-xs text-slate-500 mt-0.5">Vendor mengajukan headset ke IT</p>
-        </div>
-        {can('vendor_submission', 'create') && (
-          <button onClick={handleOpenAdd} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Plus className="w-4 h-4" />Ajukan</button>
-        )}
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={FileText}
+        title="Pengajuan"
+        description="Pengajuan equipment ke vendor. Untuk kategori Headset, pilih item katalog agar harga terisi otomatis."
+        actions={
+          canCreate && (
+            <button className="xh-btn xh-btn-primary" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              Buat Pengajuan
+            </button>
+          )
+        }
+      />
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs font-semibold mb-1">Nama Vendor</label>
-          <input type="text" value={searchVendor} onChange={(e) => setSearchVendor(e.target.value)} placeholder="Cari vendor..." className="px-3 py-2 bg-slate-50 border rounded-xl text-xs w-40" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Project</label>
-          <input type="text" value={searchProject} onChange={(e) => setSearchProject(e.target.value)} placeholder="Cari project..." className="px-3 py-2 bg-slate-50 border rounded-xl text-xs w-40" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Status</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 bg-slate-50 border rounded-xl text-xs w-32">
-            <option value="">Semua</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option>
+      <Panel padded={false}>
+        <Toolbar>
+          <SearchInput value={search} onChange={setSearch} placeholder="Cari nomor, judul, atau nama pembuatâ€¦" />
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="xh-select w-[170px]" aria-label="Filter status">
+            <option value="">Semua status</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
           </select>
+        </Toolbar>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TableSkeleton rows={6} cols={6} />
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={rows}
+              rowKey={(r) => r.id}
+              empty={
+                <EmptyState
+                  icon={FileText}
+                  title="Belum ada pengajuan"
+                  description="Buat pengajuan equipment pertama. Pengajuan yang disetujui akan otomatis tercatat pada Headset User dengan status Used."
+                  action={canCreate ? <button className="xh-btn xh-btn-primary" onClick={openCreate}><Plus className="h-4 w-4" />Buat Pengajuan</button> : undefined}
+                />
+              }
+            />
+          )}
         </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Dari</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="px-3 py-2 bg-slate-50 border rounded-xl text-xs" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Sampai</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="px-3 py-2 bg-slate-50 border rounded-xl text-xs" />
-        </div>
-        <button onClick={fetchSubmissions} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold">Filter</button>
-      </div>
+      </Panel>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px]">
-            <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-2 px-3">Kode</th><th className="py-2 px-3">Tgl</th><th className="py-2 px-3">Vendor</th><th className="py-2 px-3">NIK</th><th className="py-2 px-3">Nama</th><th className="py-2 px-3">Project</th><th className="py-2 px-3">Estimasi</th><th className="py-2 px-3 text-center">Status</th><th className="py-2 px-3 text-center">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={9} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
-                submissions.length === 0 ? <tr><td colSpan={9} className="py-8 text-center text-slate-400">Tidak ada data.</td></tr> :
-                  submissions.map((sub) => {
-                    const sc: Record<string, string> = { Pending: 'bg-amber-50 text-amber-700', Approved: 'bg-emerald-50 text-emerald-700', Rejected: 'bg-rose-50 text-rose-700' };
-                    return (
-                      <tr key={sub.id} className="hover:bg-slate-50/80">
-                        <td className="py-2 px-3 font-mono font-bold text-indigo-600">{sub.submissionCode}</td>
-                        <td className="py-2 px-3 text-slate-500">{new Date(sub.date).toLocaleDateString('id-ID')}</td>
-                        <td className="py-2 px-3 font-bold">{sub.vendorName}</td>
-                        <td className="py-2 px-3 font-mono">{sub.nik || '-'}</td>
-                        <td className="py-2 px-3">{sub.karyawanName || '-'}</td>
-                        <td className="py-2 px-3">{sub.project || '-'}</td>
-                        <td className="py-2 px-3">Rp {sub.proposedPrice?.toLocaleString('id-ID')}</td>
-                        <td className="py-2 px-3 text-center"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sc[sub.status] || 'bg-slate-100'}`}>{sub.status}</span></td>
-                        <td className="py-2 px-3 text-center">
-                          <div className="flex gap-1.5 justify-center">
-                            {canEdit(sub) && <button onClick={() => handleOpenEdit(sub)} className="p-1 hover:bg-indigo-50 rounded"><Edit className="w-3 h-3" /></button>}
-                            {can('vendor_submission', 'delete') && <button onClick={() => handleDelete(sub.id)} className="p-1 hover:bg-rose-50 rounded"><Trash2 className="w-3 h-3" /></button>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* ---------- Form ---------- */}
+      <Modal
+        open={formOpen}
+        onClose={() => !saving && setFormOpen(false)}
+        title="Buat Pengajuan"
+        description="Nama Pembuat wajib diisi. Untuk kategori Headset, pilih item dari kategori Accessories."
+        size="lg"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setFormOpen(false)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={submit as any}>
+              Simpan Pengajuan
+            </SubmitButton>
+          </>
+        }
+      >
+        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nama Pembuat" required error={errors.namaPembuat} htmlFor="vs-nama">
+            <input
+              id="vs-nama"
+              className="xh-input"
+              value={form.namaPembuat}
+              onChange={(e) => setForm({ ...form, namaPembuat: e.target.value })}
+              placeholder="Nama lengkap pembuat pengajuan"
+            />
+          </Field>
+          <Field label="Kategori" required htmlFor="vs-cat">
+            <select id="vs-cat" className="xh-select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value, itemCode: '' })}>
+              {CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b"><h3 className="text-sm font-bold">{editingSubmission ? 'Ubah Pengajuan' : 'Ajukan ke IT'}</h3><button onClick={() => setIsModalOpen(false)}><X className="w-4 h-4" /></button></div>
-            {errorMsg && <div className="mb-4 p-2.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs">{errorMsg}</div>}
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
+          {/* Item 13 */}
+          {requiresItem(form.category) && (
+            <Field
+              label="Nama Item"
+              required
+              error={errors.itemCode}
+              htmlFor="vs-item"
+              hint={catalog.length === 0 ? `Belum ada item berkategori ${HEADSET_ITEM_CATEGORY} di Master Inventory.` : `Hanya menampilkan item kategori ${HEADSET_ITEM_CATEGORY}.`}
+              className="sm:col-span-2"
+            >
+              <select
+                id="vs-item"
+                className="xh-select"
+                value={form.itemCode}
+                onChange={(e) => {
+                  const it = catalog.find((c) => c.code === e.target.value);
+                  setForm({
+                    ...form,
+                    itemCode: e.target.value,
+                    // Harga terisi otomatis dari Master Item dan read-only.
+                    proposedPrice: it?.price ?? 0,
+                  });
+                }}
+              >
+                <option value="">â€” Pilih item{catalog.length === 0 ? ' (katalog kosong)' : ''} â€”</option>
+                {catalog.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.namaItem} Â· {c.brand} Â· {c.code}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
+          <Field
+            label="Harga"
+            htmlFor="vs-price"
+            hint={
+              requiresItem(form.category)
+                ? selectedItem && selectedItem.price == null
+                  ? 'Item ini belum memiliki harga di Master Inventory â€” isi manual atau lengkapi harga master item.'
+                  : selectedItem
+                    ? 'Terisi otomatis dari Master Inventory (hanya-baca).'
+                    : 'Pilih item terlebih dahulu untuk mengisi harga otomatis.'
+                : 'Estimasi biaya pengajuan.'
+            }
+          >
+            {requiresItem(form.category) && selectedItem ? (
+              <div className="relative">
+                <MoneyInput value={form.proposedPrice} onChange={() => {}} />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-muted-foreground">
+                  read-only
+                </span>
+              </div>
+            ) : (
+              <MoneyInput value={form.proposedPrice} onChange={(n) => setForm({ ...form, proposedPrice: n })} />
+            )}
+          </Field>
+
+          <Field label="Vendor" required error={errors.vendorName}>
+            <input className="xh-input" value={form.vendorName} onChange={(e) => setForm({ ...form, vendorName: e.target.value })} />
+          </Field>
+          <Field label="Judul Pengajuan" required error={errors.title} className="sm:col-span-2">
+            <input className="xh-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Pengajuan Headset Karyawan Baru" />
+          </Field>
+          <Field label="NIK" htmlFor="vs-nik">
+            <input id="vs-nik" className="xh-input" value={form.nik} onChange={(e) => setForm({ ...form, nik: e.target.value })} />
+          </Field>
+          <Field label="Nama Karyawan">
+            <input className="xh-input" value={form.karyawanName} onChange={(e) => setForm({ ...form, karyawanName: e.target.value })} />
+          </Field>
+          <Field label="Project">
+            <input className="xh-input" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
+          </Field>
+          <Field label="Deskripsi" className="sm:col-span-2">
+            <textarea className="xh-input min-h-[80px] py-2" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </Field>
+
+          {requiresItem(form.category) && catalog.length === 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-[11.5px] text-warning-subtle-foreground sm:col-span-2">
+              <Info className="mt-px h-4 w-4 shrink-0" />
+              <p className="flex-1">
+                Master Inventory belum memiliki item berkategori <strong>{HEADSET_ITEM_CATEGORY}</strong>. Tambahkan
+                item beserta harga pada menu Master Inventory agar harga dapat terisi otomatis.
+              </p>
+              <button className="xh-btn xh-btn-secondary xh-btn-sm shrink-0" onClick={() => window.location.assign('/master/items')}>
+                <PackageSearch className="h-3.5 w-3.5" />
+                Master Item
+              </button>
+            </div>
+          )}
+        </form>
+      </Modal>
+
+      {/* ---------- Detail ---------- */}
+      <Modal
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail ? `Pengajuan ${detail.submissionCode}` : ''}
+        size="lg"
+        footer={
+          detail && (
+            <>
+              <button className="xh-btn xh-btn-secondary" onClick={() => setDetail(null)}>
+                Tutup
+              </button>
+              {canUpdate && detail.status === 'Pending' && (
+                <>
+                  <button className="xh-btn xh-btn-danger" onClick={() => decide(detail, 'Rejected')} disabled={busy}>
+                    Tolak
+                  </button>
+                  <button className="xh-btn xh-btn-primary" onClick={() => decide(detail, 'Approved')} disabled={busy}>
+                    <Check className="h-4 w-4" />
+                    Setujui
+                  </button>
+                </>
+              )}
+            </>
+          )
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <DescList
+              items={[
+                { label: 'Nomor', value: <CodeBadge>{detail.submissionCode}</CodeBadge> },
+                { label: 'Status', value: <StatusBadge status={detail.status} /> },
+                { label: 'Tanggal', value: formatDate(detail.date) },
+                { label: 'Nama Pembuat', value: detail.namaPembuat || '-' },
+                { label: 'Judul', value: detail.title },
+                { label: 'Kategori', value: detail.category },
+                { label: 'Vendor', value: detail.vendorName },
+                { label: 'Item dipilih', value: detail.itemName ? `${detail.itemName}${detail.itemCode ? ` (${detail.itemCode})` : ''}` : '-' },
+                { label: 'Estimasi Biaya', value: formatRupiah(detail.proposedPrice) },
+                { label: 'NIK', value: detail.nik || '-' },
+                { label: 'Karyawan', value: detail.karyawanName || '-' },
+                { label: 'Project', value: detail.project || '-' },
+              ]}
+            />
+            {detail.description && detail.description !== '-' && (
               <div>
-                <label className="block font-semibold mb-1">Tanggal</label>
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" />
+                <p className="xh-section-title mb-1">Deskripsi</p>
+                <p className="text-[12.5px] text-muted-foreground-strong">{detail.description}</p>
               </div>
+            )}
+            {canUpdate && detail.status === 'Pending' && (
+              <Field label="Catatan Admin" hint="Disimpan bersama keputusan persetujuan">
+                <textarea className="xh-input min-h-[72px] py-2" value={adminNote} onChange={(e) => setAdminNote(e.target.value)} />
+              </Field>
+            )}
+            {detail.adminNote && (
               <div>
-                <label className="block font-semibold mb-1">Nama Vendor (dropdown)</label>
-                <select required value={formData.vendorName} onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl">
-                  <option value="">-- Pilih Vendor --</option>
-                  {vendors.filter((v) => v.status === 'Active').map((v) => (
-                    <option key={v.id} value={v.name}>{v.name} {v.serviceType ? `(${v.serviceType})` : ''}</option>
-                  ))}
-                </select>
+                <p className="xh-section-title mb-1">Catatan Admin</p>
+                <p className="text-[12.5px] text-muted-foreground-strong">{detail.adminNote}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="block font-semibold mb-1">NIK</label><input type="text" value={formData.nik} onChange={(e) => setFormData({ ...formData, nik: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-                <div><label className="block font-semibold mb-1">Nama Karyawan</label><input type="text" value={formData.karyawanName} onChange={(e) => setFormData({ ...formData, karyawanName: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              </div>
-              <div><label className="block font-semibold mb-1">Project</label><input type="text" value={formData.project} onChange={(e) => setFormData({ ...formData, project: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div><label className="block font-semibold mb-1">Kategori</label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Pengajuan Headset</option><option>Pergantian Unit</option><option>Penawaran Hardware</option><option>Maintenance</option></select></div>
-              <div><label className="block font-semibold mb-1">Estimasi Biaya (Rp)</label><input type="number" value={formData.proposedPrice} onChange={(e) => setFormData({ ...formData, proposedPrice: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div><label className="block font-semibold mb-1">Deskripsi</label><textarea rows={2} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl"></textarea></div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Mengirim...' : editingSubmission ? 'Simpan' : 'Kirim'}</button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Hapus pengajuan?"
+        message={`Pengajuan ${confirmDelete?.submissionCode} akan dihapus permanen.`}
+        confirmLabel="Hapus"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

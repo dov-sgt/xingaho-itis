@@ -1,319 +1,350 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useApp } from '@/context/AppContext';
-import { useToast } from '@/components/Toast';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/Toast';
+import { PageHeader, StatCard, Panel, EmptyState, TableSkeleton, Skeleton } from '@/components/ui/layout';
+import { DataTable, Column, Pagination, Toolbar } from '@/components/ui/data-display';
+import { StatusBadge } from '@/components/ui/data-display';
+import { formatRupiah, formatNumber, formatDateTime } from '@/lib/format';
+import { LOW_STOCK_THRESHOLD } from '@/lib/config';
 import {
-  Boxes, Headphones, ShoppingCart, ArrowRight, PackageCheck,
-  Users, CreditCard, AlertTriangle, Briefcase, CalendarOff,
-  LayoutDashboard, Settings,
+  LayoutDashboard, Boxes, Building2, Headphones, ShoppingCart, Truck, FileText,
+  Wallet, PackageSearch, AlertTriangle, TrendingDown, RefreshCw, PackageOpen, CheckCircle2, Clock,
 } from 'lucide-react';
 
-const DIVISIONS = [
-  { key: 'IT', label: 'IT', color: 'indigo', icon: Boxes },
-  { key: 'OPS', label: 'Ops', color: 'emerald', icon: Users },
-  { key: 'QC', label: 'QC', color: 'purple', icon: AlertTriangle },
-  { key: 'HR', label: 'HR', color: 'pink', icon: Briefcase },
-];
+type Row = {
+  id: number;
+  itemCode: string | null;
+  itemName: string;
+  category: string;
+  currentStock: number;
+  updatedAt: string;
+  isLowStock: boolean;
+};
+
+type DashboardData = {
+  kpis: Record<string, number>;
+  recentStocks: Row[];
+  stocksPagination: { page: number; pageSize: number; total: number; totalPages: number };
+};
 
 export default function DashboardPage() {
-  const { user, role, division, apiFetch } = useAuth();
-  const { lang } = useApp();
+  const { user, division, isSuperAdmin, apiFetch, can } = useAuth();
   const { toast } = useToast();
-  const [data, setData] = useState<any>(null);
+
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDivision, setSelectedDivision] = useState<string>(division || 'IT');
+  const [page, setPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(
+    async (targetPage = 1, silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const res = await apiFetch(`/api/dashboard?page=${targetPage}&pageSize=${LOW_STOCK_THRESHOLD}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Gagal memuat dashboard');
+        }
+        setData(await res.json());
+      } catch (e: any) {
+        toast('error', e.message || 'Gagal memuat data dashboard');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [apiFetch, toast],
+  );
 
   useEffect(() => {
-    apiFetch('/api/dashboard')
-      .then((res) => {
-        if (!res.ok) throw new Error('Gagal memuat dashboard');
-        return res.json();
-      })
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        toast('error', 'Gagal memuat data dashboard');
-        setLoading(false);
-      });
-  }, []);
+    load(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const k = data?.kpis ?? {};
+  const scopeLabel = isSuperAdmin ? 'Semua Divisi' : division ?? '-';
 
-  const kpis = data?.kpis || {};
-  const stocks = data?.stocks || [];
-  const categoryCounts = data?.categoryCounts || {};
-  const recentTransactions = data?.recentTransactions || [];
-
-  // Division picker for SuperAdmin
-  if (role === 'SUPERADMIN') {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Pilih divisi untuk melihat dashboard
-          </p>
+  const stockColumns: Column<Row>[] = [
+    {
+      key: 'item',
+      header: 'Nama Item',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.itemName}</p>
+          {r.itemCode && <p className="truncate font-mono text-[10.5px] text-muted-foreground">{r.itemCode}</p>}
         </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Kategori',
+      cell: (r) => <span className="text-muted-foreground">{r.category || '-'}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: 'stock',
+      header: 'Jumlah Stok',
+      numeric: true,
+      cell: (r) => (
+        // Item 10: stok < 10 ditampilkan merah & tebal.
+        <span
+          className={
+            r.currentStock < LOW_STOCK_THRESHOLD
+              ? 'font-bold text-danger tabular-nums'
+              : 'font-semibold text-foreground tabular-nums'
+          }
+        >
+          {formatNumber(r.currentStock)}
+        </span>
+      ),
+    },
+    {
+      key: 'updatedAt',
+      header: 'Terakhir Diperbarui',
+      cell: (r) => <span className="text-[11.5px] text-muted-foreground">{formatDateTime(r.updatedAt)}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: 'flag',
+      header: 'Status',
+      cell: (r) =>
+        r.currentStock < LOW_STOCK_THRESHOLD ? (
+          <StatusBadge status="Stok Menipis" tone="danger" />
+        ) : (
+          <StatusBadge status="Aman" tone="success" />
+        ),
+      hideOnMobile: true,
+    },
+  ];
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {DIVISIONS.map((div) => {
-            const Icon = div.icon;
-            const colors: Record<string, string> = {
-              indigo: 'bg-indigo-50 text-indigo-600',
-              emerald: 'bg-emerald-50 text-emerald-600',
-              purple: 'bg-purple-50 text-purple-600',
-              pink: 'bg-pink-50 text-pink-600',
-            };
-            return (
-              <button
-                key={div.key}
-                onClick={() => setSelectedDivision(div.key)}
-                className={`p-6 rounded-xl border transition-all text-left ${
-                  selectedDivision === div.key
-                    ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                    : 'border-border hover:border-muted-foreground/30 bg-card'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-lg ${colors[div.color]} flex items-center justify-center mb-3`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">{div.label}</h3>
-                <p className="text-xs text-muted-foreground mt-1">Lihat dashboard {div.label}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Show selected division dashboard */}
-        {selectedDivision === 'IT' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-card p-5 rounded-xl border border-border">
-                <p className="text-xs font-medium text-muted-foreground">Master Item</p>
-                <h3 className="text-2xl font-bold text-foreground mt-1">{kpis.totalMasterItems || 0}</h3>
-              </div>
-              <div className="bg-card p-5 rounded-xl border border-border">
-                <p className="text-xs font-medium text-muted-foreground">Headset User Aktif</p>
-                <h3 className="text-2xl font-bold text-amber-600 mt-1">{kpis.activeLoans || 0}</h3>
-              </div>
-              <div className="bg-card p-5 rounded-xl border border-border">
-                <p className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</p>
-                <h3 className="text-2xl font-bold text-destructive mt-1">{kpis.pendingSubmissions || 0}</h3>
-              </div>
-              <div className="bg-card p-5 rounded-xl border border-border">
-                <p className="text-xs font-medium text-muted-foreground">Purchase Request</p>
-                <h3 className="text-2xl font-bold text-primary mt-1">{kpis.totalPR || 0}</h3>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-card p-6 rounded-xl border border-border lg:col-span-1">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Item</h3>
-                <div className="space-y-3">
-                  {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
-                    const total = kpis.totalMasterItems || 1;
-                    const pct = Math.round((count / total) * 100);
-                    return (
-                      <div key={cat}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">{cat}</span>
-                          <span className="text-muted-foreground">{count} ({pct}%)</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-1.5">
-                          <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="bg-card p-6 rounded-xl border border-border lg:col-span-2">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Transaksi Terbaru</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="pb-2 font-medium text-muted-foreground">Tanggal</th>
-                        <th className="pb-2 font-medium text-muted-foreground">NIK</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Nama</th>
-                        <th className="pb-2 font-medium text-muted-foreground">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {recentTransactions.slice(0, 5).map((tx: any) => (
-                        <tr key={tx.id}>
-                          <td className="py-2 text-muted-foreground">{tx.date}</td>
-                          <td className="py-2 text-muted-foreground">{tx.nik}</td>
-                          <td className="py-2 text-foreground">{tx.name}</td>
-                          <td className="py-2">
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                              {tx.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedDivision === 'OPS' && (
-          <div className="space-y-6">
-            <div className="bg-card p-6 rounded-xl border border-border">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Operasional</h3>
-              <p className="text-xs text-muted-foreground">Data operasional akan ditampilkan di sini.</p>
-            </div>
-          </div>
-        )}
-
-        {selectedDivision === 'QC' && (
-          <div className="space-y-6">
-            <div className="bg-card p-6 rounded-xl border border-border">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Quality Control</h3>
-              <p className="text-xs text-muted-foreground">Data QC akan ditampilkan di sini.</p>
-            </div>
-          </div>
-        )}
-
-        {selectedDivision === 'HR' && (
-          <div className="space-y-6">
-            <div className="bg-card p-6 rounded-xl border border-border">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Human Resources</h3>
-              <p className="text-xs text-muted-foreground">Data HR akan ditampilkan di sini.</p>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Non-SuperAdmin: show their division dashboard
-  if (division === 'OPS') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-card p-6 rounded-xl border border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Operasional</h3>
-          <p className="text-xs text-muted-foreground">Data operasional akan ditampilkan di sini.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (division === 'QC') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-card p-6 rounded-xl border border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Quality Control</h3>
-          <p className="text-xs text-muted-foreground">Data QC akan ditampilkan di sini.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (division === 'HR') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-card p-6 rounded-xl border border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Human Resources</h3>
-          <p className="text-xs text-muted-foreground">Data HR akan ditampilkan di sini.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Default: IT Dashboard
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">IT Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Inventaris, Headset User, & Purchase Request</p>
+    <div className="space-y-5">
+      <PageHeader
+        icon={LayoutDashboard}
+        title={`Dashboard ${isSuperAdmin ? 'IT' : (division ?? '')}`}
+        description={`Ringkasan operasional â€” ${scopeLabel}. Data diperbarui otomatis dari server.`}
+        actions={
+          <button
+            className="xh-btn xh-btn-secondary"
+            onClick={() => {
+              setRefreshing(true);
+              load(page, true);
+            }}
+            disabled={refreshing}
+          >
+            <RefreshCw className={refreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+            Muat ulang
+          </button>
+        }
+      />
+
+      {/* ---- KPI row ---- */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-[86px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Master Item" value={formatNumber(k.totalMasterItems)} icon={Boxes} tone="primary" />
+          <StatCard label="Vendor" value={formatNumber(k.totalVendors)} icon={Building2} tone="info" />
+          <StatCard
+            label="Headset Digunakan"
+            value={formatNumber(k.activeLoans)}
+            hint={`Deposit ${formatRupiah(k.totalActiveDeposit)}`}
+            icon={Headphones}
+            tone="info"
+          />
+          <StatCard
+            label="Item Damage"
+            value={formatNumber(k.damagedLoans)}
+            hint="Tidak menambah stok"
+            icon={AlertTriangle}
+            tone="danger"
+          />
+          <StatCard
+            label="Purchase Request"
+            value={formatNumber(k.totalPR)}
+            hint={`${formatNumber(k.pendingPR)} menunggu approval`}
+            icon={ShoppingCart}
+            tone="primary"
+          />
+          <StatCard
+            label="Nilai Pengadaan"
+            value={formatRupiah(k.totalSpending)}
+            icon={Wallet}
+            tone="success"
+          />
+          <StatCard
+            label="Delivery Order Berjalan"
+            value={formatNumber(k.openDeliveries)}
+            hint="Pending / Partial"
+            icon={Truck}
+            tone="warning"
+          />
+          <StatCard
+            label="Stok Menipis"
+            value={formatNumber(k.lowStockCount)}
+            hint={`Stok < ${LOW_STOCK_THRESHOLD}`}
+            icon={TrendingDown}
+            tone="danger"
+          />
+        </div>
+      )}
+
+      {/* ---- Status summary ---- */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel title="Alur Pengajuan" description="Status Pengajuan yang perlu ditindaklanjuti">
+          <ul className="space-y-2">
+            <SummaryRow
+              icon={Clock}
+              label="Menunggu approval"
+              value={formatNumber(k.pendingSubmissions)}
+              tone="warning"
+              href="/transactions/vendor-submissions"
+              visible={can('vendor_submission', 'read')}
+            />
+            <SummaryRow
+              icon={ShoppingCart}
+              label="Purchase Request pending"
+              value={formatNumber(k.pendingPR)}
+              tone="primary"
+              href="/transactions/purchase-requests"
+              visible={can('purchase_request', 'read')}
+            />
+            <SummaryRow
+              icon={Truck}
+              label="Delivery Order berjalan"
+              value={formatNumber(k.openDeliveries)}
+              tone="info"
+              href="/transactions/delivery-orders"
+              visible={can('delivery_order', 'read')}
+            />
+          </ul>
+        </Panel>
+
+        <Panel title="Siklus Headset" description="Distribusi status item peminjaman">
+          <ul className="space-y-2">
+            <SummaryRow icon={FileText} label="Pending" value={formatNumber(k.pendingLoans)} tone="warning" visible />
+            <SummaryRow icon={Headphones} label="Used (dipakai)" value={formatNumber(k.activeLoans)} tone="info" visible />
+            <SummaryRow icon={CheckCircle2} label="Good (dikembalikan)" value={formatNumber(k.goodLoans)} tone="success" visible />
+            <SummaryRow icon={AlertTriangle} label="Damage" value={formatNumber(k.damagedLoans)} tone="danger" visible />
+          </ul>
+        </Panel>
+
+        <Panel title="Akses Cepat">
+          <div className="grid grid-cols-2 gap-2">
+            {can('transaction_headset', 'read') && (
+              <QuickLink href="/transactions/items" icon={Headphones} label="Headset User" />
+            )}
+            {can('inventory_type_item', 'read') && (
+              <QuickLink href="/inventory" icon={PackageSearch} label="Inventaris & Stok" />
+            )}
+            {can('transaction_stockout', 'read') && (
+              <QuickLink href="/stock-out-transactions" icon={PackageOpen} label="Stock Out" />
+            )}
+            {can('purchase_request', 'read') && (
+              <QuickLink href="/transactions/purchase-requests" icon={ShoppingCart} label="Purchase Request" />
+            )}
+          </div>
+        </Panel>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card p-5 rounded-xl border border-border">
-          <p className="text-xs font-medium text-muted-foreground">Master Item</p>
-          <h3 className="text-2xl font-bold text-foreground mt-1">{kpis.totalMasterItems || 0}</h3>
-        </div>
-        <div className="bg-card p-5 rounded-xl border border-border">
-          <p className="text-xs font-medium text-muted-foreground">Headset User Aktif</p>
-          <h3 className="text-2xl font-bold text-amber-600 mt-1">{kpis.activeLoans || 0}</h3>
-        </div>
-        <div className="bg-card p-5 rounded-xl border border-border">
-          <p className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</p>
-          <h3 className="text-2xl font-bold text-destructive mt-1">{kpis.pendingSubmissions || 0}</h3>
-        </div>
-        <div className="bg-card p-5 rounded-xl border border-border">
-          <p className="text-xs font-medium text-muted-foreground">Purchase Request</p>
-          <h3 className="text-2xl font-bold text-primary mt-1">{kpis.totalPR || 0}</h3>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-card p-6 rounded-xl border border-border lg:col-span-1">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Item</h3>
-          <div className="space-y-3">
-            {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
-              const total = kpis.totalMasterItems || 1;
-              const pct = Math.round((count / total) * 100);
-              return (
-                <div key={cat}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">{cat}</span>
-                    <span className="text-muted-foreground">{count} ({pct}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="bg-card p-6 rounded-xl border border-border lg:col-span-2">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Transaksi Terbaru</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-2 font-medium text-muted-foreground">Tanggal</th>
-                  <th className="pb-2 font-medium text-muted-foreground">NIK</th>
-                  <th className="pb-2 font-medium text-muted-foreground">Nama</th>
-                  <th className="pb-2 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentTransactions.slice(0, 5).map((tx: any) => (
-                  <tr key={tx.id}>
-                    <td className="py-2 text-muted-foreground">{tx.date}</td>
-                    <td className="py-2 text-muted-foreground">{tx.nik}</td>
-                    <td className="py-2 text-foreground">{tx.name}</td>
-                    <td className="py-2">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        {tx.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      {/* ---- Item 10: tabel 10 transaksi terakhir ---- */}
+      <Panel
+        title="Transaksi Terakhir"
+        description={`10 item yang paling baru bergerak beserta jumlah stoknya (stok di bawah ${LOW_STOCK_THRESHOLD} ditandai merah).`}
+        padded={false}
+        bodyClassName="p-3 sm:p-4"
+      >
+        {loading ? (
+          <TableSkeleton rows={6} cols={4} />
+        ) : !data?.recentStocks.length ? (
+          <EmptyState
+            icon={PackageSearch}
+            title="Belum ada data stok"
+            description="Tambahkan barang melalui Master Inventory atau penerimaan Delivery Order untuk melihat transaksi terakhir di sini."
+          />
+        ) : (
+          <>
+            <DataTable
+              columns={stockColumns}
+              rows={data.recentStocks}
+              rowKey={(r) => r.id}
+            />
+            <Pagination
+              page={data.stocksPagination.page}
+              totalPages={data.stocksPagination.totalPages}
+              total={data.stocksPagination.total}
+              pageSize={data.stocksPagination.pageSize}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </Panel>
     </div>
+  );
+}
+
+function SummaryRow({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  href,
+  visible = true,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  tone: 'primary' | 'success' | 'warning' | 'danger' | 'info';
+  href?: string;
+  visible?: boolean;
+}) {
+  if (!visible) return null;
+  const tones: Record<string, string> = {
+    primary: 'text-primary',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-danger',
+    info: 'text-info',
+  };
+  const inner = (
+    <li className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-muted">
+      <Icon className={`h-4 w-4 shrink-0 ${tones[tone]}`} />
+      <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground-strong">{label}</span>
+      <span className="shrink-0 text-[13px] font-bold tabular-nums text-foreground">{value}</span>
+    </li>
+  );
+  return href ? (
+    <Link href={href} className="block">
+      {inner}
+    </Link>
+  ) : (
+    inner
+  );
+}
+
+function QuickLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-primary-subtle"
+    >
+      <Icon className="h-4 w-4 text-primary" />
+      <span className="text-[11.5px] font-semibold leading-tight text-foreground">{label}</span>
+    </Link>
   );
 }

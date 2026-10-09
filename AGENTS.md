@@ -7,102 +7,115 @@ Xinghao ITIS — Multi-department IT & Operations management system (IT, Ops, QC
 ## Commands
 
 ```bash
-npm run dev              # Dev server
-npm run build            # Production build
-npm run start            # Start production (port 3005)
-npm run db:push          # Push Prisma schema
-npm run db:generate      # Regenerate Prisma client
-npm run db:seed          # Seed database (IT users only)
-node prisma/reset.js     # Reset database (SuperAdmin only)
+npm run dev                        # Dev server
+npm run build                      # Production build
+npm run start                      # Start production (port 3005)
+npm run db:setup                   # db push + generate + seed (fresh install)
+npm run db:push                    # Push Prisma schema
+npm run db:generate                # Regenerate Prisma client
+npm run db:seed                    # Seed roles/divisions/users
+node prisma/reset.js               # Reset database (SuperAdmin only)
+
+# Migrasi data (sekali, setelah deploy)
+npm run migrate:headset-status     # Status Headset lama -> Used/Good/Damage (item 11)
+npm run migrate:delivery-orders    # Backfill DO untuk PR Approved tanpa DO (item 6)
 ```
 
 ## Architecture
 
 - **Path alias**: `@/*` → `./src/*`
-- **API routes**: `src/app/api/**/route.ts` (GET/POST/PUT/DELETE)
-- **Pages**: `src/app/**/page.tsx` (client-side, fetch from API)
-- **Prisma singleton**: `src/lib/prisma.ts` (globalThis pattern)
+- **API routes**: `src/app/api/**/route.ts` — **hanya boleh export HTTP method** (GET/POST/PUT/DELETE). Konstanta & helper harus dipindah ke `src/lib/*`.
+- **Pages**: `src/app/**/page.tsx` (client-side, fetch via `apiFetch()`)
+- **Prisma singleton**: `src/lib/prisma.ts`
 - **React Strict Mode**: disabled in `next.config.mjs`
+
+## Design System
+
+Semua warna, tipografi, dan spacing berasal dari **CSS variable di `src/app/globals.css`**._tailwind.config.ts memetakan token tersebut ke utility class.
+
+- **Dilarang** menulis `bg-white`, `text-slate-*`, `text-gray-*`, atau hex warna langsung di komponen.
+- Gunakan token: `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary-subtle`, `text-danger`, `bg-success-subtle`, `bg-warning-subtle`, `bg-info-subtle`, `bg-danger-subtle`.
+- **PENTING:** hanya boleh ada **satu** file konfigurasi Tailwind (`tailwind.config.ts`). Jangan pernah membuat `tailwind.config.js` bersamaan — file `.js` akan menang dan membuat dark mode tidak berfungsi.
+- Komponen reusable: `src/components/ui/layout.tsx` (PageHeader, Panel, StatCard, Field, EmptyState, Skeleton, DescList), `data-display.tsx` (DataTable, StatusBadge, Pagination, Toolbar, SearchInput, CodeBadge), `form.tsx` (Modal, ConfirmDialog, MoneyInput, NumberInput, SubmitButton), `crud-page.tsx` (CrudPage untuk halaman CRUD sederhana).
+- Helper CSS: `.surface-card`, `.xh-table-wrapper` / `.xh-table`, `.xh-input`, `.xh-select`, `.xh-btn-*`, `.xh-chip-*`, `.no-print`, `.print-only`.
 
 ## Authentication
 
-- **Real auth**: Login API at `src/app/api/auth/login/route.ts` validates username/password against database (bcrypt)
-- **AuthContext**: `src/context/AuthContext.tsx` — stores user in `localStorage` key `itis_user`, provides `apiFetch()` with `x-user` header
-- **Session check**: `src/lib/session.ts` — validates `x-user` header against database
-- **Login page**: `src/app/login/page.tsx` — proper form with validation
-- **Root redirect**: `/` → `/login` (if not authenticated) or `/dashboard` (if authenticated)
+- **Login**: `POST /api/auth/login` — bcrypt compare, lalu membuat **session server-side** dan mengeset cookie HttpOnly `xh_session`.
+- **Sesi**: tabel `Session` (token disimpan sebagai SHA-256 hash). Setiap login menghapus sesi lama → rotasi token (anti session fixation).
+- **Logout**: `DELETE /api/auth/session`.
+- `GET /api/auth/session` untuk memulihkan sesi saat load.
+- **Client**: `src/context/AuthContext.tsx` menyimpan profil user hasil login (`UserSession`) di state + `localStorage: itis_user`. Cookie HttpOnly tetap menjadi kredensial otoritatif — JANGAN pernah menulis user default/anonim di sana.
+- **Server**: `src/lib/session.ts` menyediakan `getAuthContext`, `requireAuth`, `requirePermission`, `requireAnyPermission`, `requireSuperAdminPermission`.
 
-## RBAC (Dynamic, Database-Driven)
+## RBAC (Database-Driven)
 
-### Roles (per division)
-- **IT Division**: IT_MANAGER, IT_SPV, IT_STAFF
-- **OPS Division**: OPS_MANAGER, OPS_SPV, OPS_LEADER, OPS_AGENT
-- **QC Division**: QC_SPV, QC_STAFF
-- **HR Division**: HR_MANAGER, HR_STAFF
+Database adalah **satu-satunya sumber kebenaran** role & permission.
 
-### Permission Structure
-- Permissions stored in database as JSON: `{ "feature": ["create","read","update","delete"], ... }`
-- **Granularity**: Per sub-menu (e.g., `transaction_headset`, `transaction_stockout`, `purchase_request`, `delivery_order`, `vendor_submission`)
-- **Dynamic**: Roles and permissions manageable via UI (SuperAdmin)
+- Tabel `Role.permissions` berisi JSON: `{ "feature": ["create","read","update","delete"] }`.
+- `User.roleId` → FK ke `Role`; `User.divisionId` → FK ke `Division`.
+- **JANGAN** menulis daftar role/permission hardcoded. `src/lib/rbac.ts` hanya berisi kosakata (daftar feature & action) + helper murni.
+- Feature key kanonik ada di `FEATURES` (`src/lib/rbac.ts`); `FEATURE_ALIASES` menjaga kompatibilitas (`transaction_item` → `transaction_headset`).
+- Menu sidebar dan RouteGuard membaca dari `src/lib/navigation.ts` — sama persis dengan feature yang divalidasi backend.
+- Role `SUPERADMIN` otomatis lolos semua pengecekan.
 
-### Division Management
-- Divisions stored in database (IT, OPS, QC, HR, FINANCE, MARKETING, etc.)
-- Users assigned to one division + one role
-- Menu visibility filtered by division + role permissions
+## Navigasi
 
-### Server-side Check
-```typescript
-// In API routes
-const user = await getUserFromRequest(req);
-if (!hasPermission(user.role, feature, action)) {
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-}
-```
+- `src/lib/navigation.ts` = sumber kebenaran menu (IT_NAV, OPS_NAV, QC_NAV, HR_NAV, ADMIN_NAV).
+- Item 8: menu **"Pengajuan Vendor"** sudah dinamai **"Pengajuan"** (route `/transactions/vendor-submissions`, feature `vendor_submission`).
 
-## UI Features
+## Format utilities
 
-- **Dark mode**: Toggle in Navbar, CSS variables in `globals.css`, `darkMode: 'class'` in tailwind config
-- **Language**: ID/EN toggle in Navbar, `src/lib/i18n.ts` for translations
-- **Toast**: `useToast()` from `src/components/Toast.tsx`
-- **Theme**: shadcn-style CSS variables (HSL), minimalist design
-- **Logo**: `pict/xh_logo_1.png` — used in login page, navbar, and all report/print headers
+`src/lib/format.ts`: `formatRupiah`, `formatNumber`, `formatDate`, `formatDateTime`, `parseRupiahInput`.
+Nilai uang **selalu disimpan sebagai angka** di database; format hanya untuk tampilan/input.
+
+## Conventions
+
+- UI text: Bahasa Indonesia (dengan toggle EN di Navbar).
+- Ikon: `lucide-react` (satu set saja).
+- Client fetch: `apiFetch()` dari `useAuth()` (otomatis `credentials: 'same-origin'`).
+- Route `page.tsx` yang butuh data user **wajib** `'use client'`.
+- Hook harus dipanggil sebelum `return` bersyarat (hindari React error #310).
+- Validasi angka harus memakai `isNegative()` dari `@/lib/documents`, **bukan** `toNumber(v, -1) < 0` — nilai kosong dianggap negatif bila memakai pola terakhir.
+- Total/grand total selalu **dihitung ulang di server**; jangan percaya nilai dari client.
 
 ## Database
 
 - **Dev**: SQLite at `prisma/dev.db`
-- **Prod**: PostgreSQL (change `provider` in `schema.prisma`)
-- **Seed**: `prisma/seed.js` — creates IT users only (superadmin, spv_it, staff_it)
-- **Reset**: `prisma/reset.js` — clears all data, creates only SuperAdmin
-
-### Default Users (after seed)
-| Username | Password | Role | Division |
-|---|---|---|---|
-| superadmin | admin123 | SUPERADMIN | IT |
-| spv_it | spv123 | IT_SPV | IT |
-| staff_it | staff123 | IT_STAFF | IT |
-
-## Conventions
-
-- UI text: Indonesian (default) with English toggle
-- Icons: `lucide-react`
-- Styling: Tailwind CSS with shadcn-style CSS variables
-- All client fetch: use `apiFetch()` from AuthContext
-- All forms: loading state on submit, `confirm()` on destructive actions
-- Tables: compact `text-[11px]`, `py-2 px-3` padding
-- Reports: Use `pict/xh_logo_1.png` as header logo in all print/export views
+- **Prod**: PostgreSQL
+- Schema evolution memakai `prisma db push` (tidak ada folder migrations).
+- Semua kolom baru dibuat **nullable / ber-default** agar data lama tidak rusak.
 
 ## Deployment
 
-- **Path**: `/var/www/html/xinghao-itis`
+- **Path**: `/var/www/html/xingaho-itis`
 - **Process**: PM2 (`pm2 start npm --name "xinghao-itis" -- start`)
-- **Port**: 3005 (3000 used by Grafana)
-- **Update**: `git pull && npm run build && pm2 restart xingaho-itis`
+- **Port**: 3005 (3000 dipakai Grafana)
+
+### Update Routine
+
+```bash
+cd /var/www/html/xinghao-itis
+rm -f pict/xh_logo_1.png          # obsolete, untracked — blokir git pull
+git pull origin main
+npm install
+npx prisma db push
+npm run build
+pm2 restart xinghao-itis
+```
+
+Setelah upgrade versi besar, jalankan sekali:
+```bash
+npm run migrate:headset-status
+npm run migrate:delivery-orders
+```
 
 ## Pre-Revision Checklist
 
-Before pushing any changes:
-1. Read this AGENTS.md
-2. Run `npm run build` locally — must pass
-3. Check all role references match `Role` type in `rbac.ts`
-4. Check all Prisma model references match `schema.prisma`
-5. Only push after build succeeds
+Sebelum push:
+1. Baca `AGENTS.md` ini.
+2. `npm run build` harus lulus.
+3. Tidak ada warna hardcoded (`bg-white`, `text-slate-*`, hex) di `src/**`.
+4. Tidak ada `route.ts` yang export non-HTTP-method.
+5. Semua perubahan API memakai `requirePermission`/`requireAnyPermission`.
+6. Hanya baru commit & push setelah build sukses.

@@ -1,45 +1,45 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { ok, badRequest, serverError } from '@/lib/api';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
 
-export async function GET(req: NextRequest) {
-  try {
-    const bookings = await prisma.booking.findMany({ orderBy: { id: 'desc' } });
-    return ok(bookings);
-  } catch (error: any) { return serverError(error.message); }
-}
+const handlers = buildCrudHandlers({
+  model: 'booking',
+  feature: 'booking',
+  searchFields: ['bookingCode', 'borrowerName', 'location', 'itemType'],
+  statusField: 'status',
+  dateField: 'startDate',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.borrowerName) e.push('Nama peminjam wajib diisi.');
+    if (!body.startDate) e.push('Tanggal mulai wajib diisi.');
+    if (body.endDate && body.startDate && new Date(body.endDate) < new Date(body.startDate)) {
+      e.push('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.');
+    }
+    return e;
+  },
+  toCreate: async (body) => ({
+    bookingCode: await nextCode('booking', 'BKG'),
+    borrowerName: body.borrowerName,
+    itemType: body.itemType || 'Projector',
+    startDate: body.startDate,
+    startTime: body.startTime || null,
+    endDate: body.endDate || null,
+    endTime: body.endTime || null,
+    location: body.location || null,
+    status: body.status || 'Pending',
+    createdBy: body.createdBy || null,
+  }),
+  toUpdate: (body) => ({
+    borrowerName: body.borrowerName,
+    itemType: body.itemType,
+    startDate: body.startDate,
+    startTime: body.startTime || null,
+    endDate: body.endDate || null,
+    endTime: body.endTime || null,
+    location: body.location || null,
+    ...(body.status ? { status: body.status } : {}),
+  }),
+});
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { borrowerName, startDate, startTime, endDate, endTime, location } = body;
-    if (!borrowerName || !startDate) return badRequest('Nama peminjam dan tanggal mulai wajib diisi');
-    const count = await prisma.booking.count();
-    const bookingCode = `BKG-2026-${(count + 1).toString().padStart(4, '0')}`;
-    const booking = await prisma.booking.create({
-      data: { bookingCode, borrowerName, itemType: 'Projector', startDate, startTime: startTime || null, endDate: endDate || null, endTime: endTime || null, location: location || null, status: 'Pending' },
-    });
-    return ok(booking, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { id, status } = body;
-    if (!id) return badRequest('ID is required');
-    const updated = await prisma.booking.update({ where: { id: Number(id) }, data: { status } });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function DELETE(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return badRequest('ID is required');
-    await prisma.booking.delete({ where: { id: Number(id) } });
-    return ok({ success: true });
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

@@ -9,7 +9,11 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "node prisma/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "db:reset": "node prisma/reset.js",
+    "db:setup": "prisma db push && prisma generate && node prisma/seed.js",
+    "migrate:delivery-orders": "node prisma/backfill-delivery-orders.js",
+    "migrate:headset-status": "node prisma/migrate-headset-status.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

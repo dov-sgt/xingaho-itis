@@ -1,115 +1,93 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/components/Toast';
-import { DoorOpen, Plus, Edit, Trash2, X, ShieldAlert } from 'lucide-react';
+import React from 'react';
+import { CrudPage } from '@/components/ui/crud-page';
+import { CodeBadge } from '@/components/ui/data-display';
+import { formatDate } from '@/lib/format';
+import { Server, MapPin, LogIn, LogOut, User2 } from 'lucide-react';
+
+type Row = {
+  id: number;
+  logCode: string;
+  date: string;
+  nama: string;
+  jamMasuk: string;
+  jamKeluar: string | null;
+  keperluan: string;
+  location: string;
+};
 
 export default function LogRuangServerPage() {
-  const { can, role, canAccess, user, apiFetch } = useAuth();
-  const { toast } = useToast();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [formData, setFormData] = useState({ date: '', nama: '', jamMasuk: '', jamKeluar: '', keperluan: '', location: '' });
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const fetchLogs = () => {
-    setLoading(true);
-    apiFetch('/api/log-ruang-server').then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => { setLogs(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => { toast('error', 'Gagal memuat'); setLoading(false); });
-  };
-
-  useEffect(() => { fetchLogs(); }, []);
-
-  const handleOpenAdd = () => { setEditing(null); setFormData({ date: new Date().toISOString().split('T')[0], nama: '', jamMasuk: '', jamKeluar: '', keperluan: '', location: '' }); setErrorMsg(''); setIsModalOpen(true); };
-  const handleOpenEdit = (l: any) => { setEditing(l); setFormData({ date: l.date ? new Date(l.date).toISOString().split('T')[0] : '', nama: l.nama, jamMasuk: l.jamMasuk, jamKeluar: l.jamKeluar || '', keperluan: l.keperluan, location: l.location || '' }); setErrorMsg(''); setIsModalOpen(true); };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault(); setErrorMsg(''); setSaving(true);
-    try {
-      const res = await apiFetch('/api/log-ruang-server', { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...formData } : formData) });
-      const result = await res.json();
-      if (!res.ok) { setErrorMsg(result.error); setSaving(false); return; }
-      setIsModalOpen(false); toast('success', editing ? 'Diperbarui' : 'Log dibuat'); fetchLogs();
-    } catch (err: any) { setErrorMsg(err.message); }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Hapus log ini?')) return;
-    try {
-      const res = await apiFetch(`/api/log-ruang-server?id=${id}`, { method: 'DELETE' });
-      if (res.ok) { toast('success', 'Dihapus'); fetchLogs(); } else toast('error', 'Gagal');
-    } catch { toast('error', 'Gagal'); }
-  };
-
-  if (!canAccess('transaction_item')) {
-    return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3></div>);
-  }
-
-  const canEdit = ['SPV_OPS', 'MANAGER_OPS', 'SUPERADMIN'].includes(role);
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><DoorOpen className="w-5 h-5 text-indigo-600" />Log Ruang Server</h1>
-        {canEdit && <button onClick={handleOpenAdd} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Plus className="w-4 h-4" />Tambah Log</button>}
-      </div>
-
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px]">
-            <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-2 px-3">ID</th><th className="py-2 px-3">Tanggal</th><th className="py-2 px-3">Nama</th><th className="py-2 px-3">Jam Masuk</th><th className="py-2 px-3">Jam Keluar</th><th className="py-2 px-3">Keperluan</th><th className="py-2 px-3 text-center">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={7} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
-                logs.length === 0 ? <tr><td colSpan={7} className="py-8 text-center text-slate-400">Belum ada log.</td></tr> :
-                  logs.map((l) => (
-                    <tr key={l.id} className="hover:bg-slate-50/80">
-                      <td className="py-2 px-3 font-mono font-bold text-indigo-600">{l.logCode}</td>
-                      <td className="py-2 px-3">{new Date(l.date).toLocaleDateString('id-ID')}</td>
-                      <td className="py-2 px-3 font-semibold">{l.nama}</td>
-                      <td className="py-2 px-3">{l.jamMasuk}</td>
-                      <td className="py-2 px-3">{l.jamKeluar || '-'}</td>
-                      <td className="py-2 px-3">{l.keperluan}</td>
-                      <td className="py-2 px-3 text-center">
-                        <div className="flex gap-1 justify-center">
-                          {canEdit && <button onClick={() => handleOpenEdit(l)} className="p-1 hover:bg-indigo-50 rounded"><Edit className="w-3 h-3" /></button>}
-                          {canEdit && <button onClick={() => handleDelete(l.id)} className="p-1 hover:bg-rose-50 rounded"><Trash2 className="w-3 h-3" /></button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <div className="flex justify-between mb-4 pb-3 border-b"><h3 className="text-sm font-bold">{editing ? 'Ubah Log' : 'Tambah Log Ruang Server'}</h3><button onClick={() => setIsModalOpen(false)}><X className="w-4 h-4" /></button></div>
-            {errorMsg && <div className="mb-4 p-2.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs">{errorMsg}</div>}
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
-              <div><label className="block font-semibold mb-1">Tanggal</label><input type="date" required value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div><label className="block font-semibold mb-1">Nama</label><input type="text" required value={formData.nama} onChange={(e) => setFormData({ ...formData, nama: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="block font-semibold mb-1">Jam Masuk</label><input type="time" required value={formData.jamMasuk} onChange={(e) => setFormData({ ...formData, jamMasuk: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-                <div><label className="block font-semibold mb-1">Jam Keluar</label><input type="time" value={formData.jamKeluar} onChange={(e) => setFormData({ ...formData, jamKeluar: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              </div>
-              <div><label className="block font-semibold mb-1">Keperluan</label><textarea rows={2} required value={formData.keperluan} onChange={(e) => setFormData({ ...formData, keperluan: e.target.value })} placeholder="Contoh: Maintenance server, cek AC, dll" className="w-full px-3 py-2 bg-slate-50 border rounded-xl"></textarea></div>
-              <div><label className="block font-semibold mb-1">Location</label><input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="Contoh: Rack A-01, Server Room Lt. 2" className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+    <CrudPage<Row>
+      title="Log Ruang Server"
+      description="Pencatatan orang yang masuk dan keluar ruang server beserta keperluan."
+      icon={Server}
+      endpoint="/api/log-ruang-server"
+      createFeature="log_ruang_server"
+      updateFeature="log_ruang_server"
+      deleteFeature="log_ruang_server"
+      searchPlaceholder="Cari nama, keperluan, atau lokasi…"
+      emptyTitle="Belum ada log ruang server"
+      emptyDescription="Setiap kunjungan ke ruang server harus dicatat lengkap dengan jam masuk dan keluar."
+      rowLabel={(r) => r.logCode}
+      columns={[
+        { key: 'logCode', header: 'Kode', cell: (r) => <CodeBadge>{r.logCode}</CodeBadge>, hideOnMobile: true },
+        { key: 'date', header: 'Tanggal', cell: (r) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(r.date)}</span> },
+        {
+          key: 'nama',
+          header: 'Nama',
+          cell: (r) => (
+            <span className="flex items-center gap-1.5 font-medium text-foreground">
+              <User2 className="h-3.5 w-3.5 text-muted-foreground" />
+              {r.nama}
+            </span>
+          ),
+        },
+        {
+          key: 'time',
+          header: 'Jam',
+          cell: (r) => (
+            <span className="flex items-center gap-2 whitespace-nowrap text-[11.5px]">
+              <span className="flex items-center gap-1 text-success">
+                <LogIn className="h-3 w-3" />
+                {r.jamMasuk}
+              </span>
+              <span className="text-muted-foreground">→</span>
+              <span className="flex items-center gap-1 text-muted-foreground-strong">
+                <LogOut className="h-3 w-3" />
+                {r.jamKeluar ?? '-'}
+              </span>
+            </span>
+          ),
+        },
+        {
+          key: 'location',
+          header: 'Lokasi',
+          cell: (r) => (
+            <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {r.location || '-'}
+            </span>
+          ),
+          hideOnMobile: true,
+        },
+        { key: 'keperluan', header: 'Keperluan', cell: (r) => <span className="text-[11.5px] text-muted-foreground-strong">{r.keperluan}</span> },
+      ]}
+      fields={[
+        { key: 'nama', label: 'Nama', type: 'text', required: true, span: 2 },
+        { key: 'location', label: 'Lokasi', type: 'text', placeholder: 'mis. Lantai 3 — Ruang Server A', hint: 'Isi bebas, boleh berupa lokasi spesifik' },
+        { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: new Date().toISOString().slice(0, 10) },
+        { key: 'jamMasuk', label: 'Jam Masuk', type: 'text', required: true, placeholder: 'mis. 14:30' },
+        { key: 'jamKeluar', label: 'Jam Keluar', type: 'text', placeholder: 'Kosongkan bila belum keluar' },
+        { key: 'keperluan', label: 'Keperluan', type: 'textarea', required: true, span: 3 },
+      ]}
+      info={
+        <>
+          <strong>Lokasi</strong> diisi bebas (teks), bukan dari daftar tetap, agar dapat mencatat lokasi spesifik seperti
+          lantai atau nama ruang. Jam keluar boleh dikosongkan selama kunjungan masih berlangsung.
+        </>
+      }
+    />
   );
 }

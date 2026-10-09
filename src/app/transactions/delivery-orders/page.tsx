@@ -1,112 +1,316 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { Truck, PackageCheck, ShieldAlert } from 'lucide-react';
+import { PageHeader, Panel, Field, EmptyState, TableSkeleton, DescList } from '@/components/ui/layout';
+import { DataTable, Column, StatusBadge, Pagination, Toolbar, SearchInput, CodeBadge } from '@/components/ui/data-display';
+import { Modal, MoneyInput, NumberInput, SubmitButton } from '@/components/ui/form';
+import { formatRupiah, formatDate, formatNumber } from '@/lib/format';
+import { Truck, PackageCheck, Plus, Info, Eye, ShoppingCart, CheckCheck } from 'lucide-react';
+
+type Do = {
+  id: number;
+  doNumber: string;
+  prId: number | null;
+  prNumber: string | null;
+  vendorName: string;
+  itemCode: string | null;
+  itemName: string;
+  qtyOrdered: number;
+  qtyReceived: number;
+  price: number;
+  totalValue: number;
+  date: string;
+  recipient: string;
+  status: string;
+  note: string | null;
+};
+
+const STATUS_OPTIONS = ['Pending', 'Partial', 'Received'];
 
 export default function DeliveryOrdersPage() {
-  const { can, role, canAccess, user, apiFetch } = useAuth();
+  const { can, apiFetch } = useAuth();
   const { toast } = useToast();
-  const [dos, setDos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [receiveModal, setReceiveModal] = useState<any>(null);
-  const [receiveQty, setReceiveQty] = useState('');
 
-  const fetchDOs = () => {
+  const [rows, setRows] = useState<Do[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+
+  const [detail, setDetail] = useState<Do | null>(null);
+  const [receiveOpen, setReceiveOpen] = useState<Do | null>(null);
+  const [receiveForm, setReceiveForm] = useState({ qtyReceived: 0, recipient: '', note: '' });
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const canUpdate = can('delivery_order', 'update');
+
+  const load = useCallback(async () => {
     setLoading(true);
-    apiFetch('/api/transactions/delivery-orders')
-      .then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => { setDos(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => { toast('error', 'Gagal memuat DO'); setLoading(false); });
+    try {
+      const qs = new URLSearchParams({ page: String(page), pageSize: '10' });
+      if (search.trim()) qs.set('search', search.trim());
+      if (status) qs.set('status', status);
+      const res = await apiFetch(`/api/transactions/delivery-orders?${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat Delivery Order');
+      setRows(json.data ?? []);
+      setPagination(json.pagination ?? { page, pageSize: 10, total: (json.data ?? []).length, totalPages: 1 });
+    } catch (e: any) {
+      toast('error', e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, page, search, status, toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const openReceive = (d: Do) => {
+    setReceiveOpen(d);
+    setReceiveForm({ qtyReceived: d.qtyReceived, recipient: d.recipient, note: d.note ?? '' });
+    setErrors({});
   };
 
-  useEffect(() => { fetchDOs(); }, []);
+  const submitReceive = async () => {
+    if (!receiveOpen) return;
+    const e: Record<string, string> = {};
+    if (receiveForm.qtyReceived < 0) e.qty = 'Qty tidak boleh negatif.';
+    if (receiveForm.qtyReceived > receiveOpen.qtyOrdered) e.qty = `Qty maksimal ${receiveOpen.qtyOrdered}.`;
+    setErrors(e);
+    if (Object.keys(e).length) return;
 
-  const handleReceive = async () => {
     setSaving(true);
     try {
       const res = await apiFetch('/api/transactions/delivery-orders', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: receiveModal.id, qtyReceived: parseInt(receiveQty), status: parseInt(receiveQty) >= receiveModal.qtyOrdered ? 'Received' : 'Partial', recipient: user?.name }),
+        method: 'PUT',
+        body: JSON.stringify({ id: receiveOpen.id, ...receiveForm }),
       });
-      if (res.ok) {
-        toast('success', parseInt(receiveQty) >= receiveModal.qtyOrdered ? 'DO Received - Stock bertambah' : 'DO Partial - Sebagian diterima');
-        setReceiveModal(null); fetchDOs();
-      } else {
-        const result = await res.json();
-        toast('error', result.error || 'Gagal');
-      }
-    } catch { toast('error', 'Gagal'); }
-    setSaving(false);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menyimpan penerimaan');
+      toast('success', `Penerimaan ${receiveOpen.doNumber} tersimpan. Stok diperbarui otomatis bila status Received.`);
+      setReceiveOpen(null);
+      setDetail(null);
+      load();
+    } catch (err: any) {
+      toast('error', err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!canAccess('delivery_order')) {
-    return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3><p className="text-xs text-slate-500 mt-1">Role {role} tidak punya akses.</p></div>);
-  }
+  const columns: Column<Do>[] = [
+    {
+      key: 'doNumber',
+      header: 'No. DO',
+      cell: (r) => (
+        <button onClick={() => setDetail(r)} className="text-left font-mono text-[11.5px] font-semibold text-primary hover:underline">
+          {r.doNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'prNumber',
+      header: 'No. PR',
+      cell: (r) => (r.prNumber ? <CodeBadge>{r.prNumber}</CodeBadge> : <span className="text-[11.5px] italic text-muted-foreground">manual</span>),
+      hideOnMobile: true,
+    },
+    {
+      key: 'item',
+      header: 'Item',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.itemName}</p>
+          <p className="truncate text-[10.5px] text-muted-foreground">{r.vendorName}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'qty',
+      header: 'Diterima / Dipesan',
+      numeric: true,
+      cell: (r) => (
+        <span className="tabular-nums">
+          <span className={r.qtyReceived >= r.qtyOrdered ? 'font-bold text-success' : 'font-semibold text-foreground'}>
+            {formatNumber(r.qtyReceived)}
+          </span>
+          <span className="text-muted-foreground"> / {formatNumber(r.qtyOrdered)}</span>
+        </span>
+      ),
+    },
+    { key: 'totalValue', header: 'Nilai', numeric: true, cell: (r) => <span className="tabular-nums">{formatRupiah(r.totalValue || r.price * r.qtyOrdered)}</span>, hideOnMobile: true },
+    { key: 'date', header: 'Tanggal', cell: (r) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(r.date)}</span>, hideOnMobile: true },
+    { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      className: 'text-right',
+      cell: (r) => (
+        <div className="flex items-center justify-end gap-1">
+          {canUpdate && r.status !== 'Received' && (
+            <button className="xh-btn xh-btn-ghost h-8 w-8 p-0 text-success" title="Terima barang" onClick={() => openReceive(r)}>
+              <CheckCheck className="h-4 w-4" />
+            </button>
+          )}
+          <button className="xh-btn xh-btn-ghost h-8 w-8 p-0" title="Lihat detail" onClick={() => setDetail(r)}>
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Truck className="w-5 h-5 text-indigo-600" /><span>Delivery Order</span></h1>
-        <p className="text-xs text-slate-500 mt-0.5">Data otomatis dari Purchase Order yang sudah Approve. Hanya bisa Receive / Partial.</p>
+    <div className="space-y-5">
+      <PageHeader
+        icon={Truck}
+        title="Delivery Order"
+        description="Delivery Order dibuat otomatis setiap Purchase Request disetujui. Catat penerimaan barang di sini."
+      />
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground">
+        <Info className="mt-px h-4 w-4 shrink-0" />
+        <p>
+          Setiap Purchase Request berstatus <strong>Approved</strong> otomatis menghasilkan satu Delivery Order per
+          item, tanpa duplikat meski disetujui berkali-kali. Saat DO berstatus <strong>Received</strong>, stok
+          inventori bertambah otomatis dan Purchase Request ditandai selesai bila seluruh item sudah diterima.
+        </p>
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-3 px-4">No DO</th><th className="py-3 px-4">Tgl</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Item</th><th className="py-3 px-4 text-center">Order Qty</th><th className="py-3 px-4 text-center">Received</th><th className="py-3 px-4 text-center">Status</th><th className="py-3 px-4 text-center">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={8} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
-                dos.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-400">Belum ada DO. Buat PR dulu.</td></tr> :
-                  dos.map((d) => {
-                    const sc: Record<string, string> = { Received: 'bg-emerald-50 text-emerald-700 border-emerald-200', Partial: 'bg-amber-50 text-amber-700 border-amber-200', Pending: 'bg-slate-100 text-slate-600' };
-                    return (
-                      <tr key={d.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 font-mono font-bold text-indigo-600">{d.doNumber}</td>
-                        <td className="py-3 px-4 text-slate-500">{new Date(d.date).toLocaleDateString('id-ID')}</td>
-                        <td className="py-3 px-4 font-bold">{d.vendorName}</td>
-                        <td className="py-3 px-4">{d.itemName}</td>
-                        <td className="py-3 px-4 text-center font-bold">{d.qtyOrdered}</td>
-                        <td className="py-3 px-4 text-center">{d.qtyReceived}</td>
-                        <td className="py-3 px-4 text-center"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${sc[d.status] || 'bg-slate-100'}`}>{d.status}</span></td>
-                        <td className="py-3 px-4 text-center">
-                          {d.status !== 'Received' && can('delivery_order', 'update') && (
-                            <button onClick={() => { setReceiveModal(d); setReceiveQty(String(d.qtyOrdered)); }} className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded text-[11px] border border-emerald-200">Receive</button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
+      <Panel padded={false}>
+        <Toolbar>
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nomor DO, nomor PR, item, atau penerima…" />
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="xh-select w-[170px]" aria-label="Filter status">
+            <option value="">Semua status</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </Toolbar>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TableSkeleton rows={6} cols={6} />
+          ) : (
+            <>
+              <DataTable
+                columns={columns}
+                rows={rows}
+                rowKey={(r) => r.id}
+                empty={
+                  <EmptyState
+                    icon={Truck}
+                    title="Belum ada Delivery Order"
+                    description="Delivery Order akan muncul otomatis setelah ada Purchase Request yang disetujui."
+                    action={
+                      can('purchase_request', 'read') ? (
+                        <a className="xh-btn xh-btn-secondary" href="/transactions/purchase-requests">
+                          <ShoppingCart className="h-4 w-4" />
+                          Lihat Purchase Request
+                        </a>
+                      ) : undefined
+                    }
+                  />
+                }
+              />
+              <Pagination {...pagination} onPageChange={setPage} />
+            </>
+          )}
         </div>
-      </div>
+      </Panel>
 
-      {/* Receive Modal */}
-      {receiveModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 className="text-sm font-bold mb-4">Receive DO {receiveModal.doNumber}</h3>
-            <div className="p-3 bg-slate-50 rounded-xl mb-4 text-xs">
-              <div className="font-bold">{receiveModal.itemName}</div>
-              <div className="text-slate-500">Order: {receiveModal.qtyOrdered} | Already received: {receiveModal.qtyReceived}</div>
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Qty Diterima</label>
-                <input type="number" min="1" max={receiveModal.qtyOrdered} value={receiveQty} onChange={(e) => setReceiveQty(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" />
-                {parseInt(receiveQty) < receiveModal.qtyOrdered && <p className="text-amber-600 text-[11px] mt-1">Kurang dari order → status Partial</p>}
-              </div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => setReceiveModal(null)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button onClick={handleReceive} disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Memproses...' : 'Confirm Receive'}</button>
-              </div>
-            </div>
+      {/* Detail */}
+      <Modal
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail ? `Delivery Order ${detail.doNumber}` : ''}
+        size="lg"
+        footer={
+          detail && (
+            <>
+              <button className="xh-btn xh-btn-secondary" onClick={() => setDetail(null)}>
+                Tutup
+              </button>
+              {canUpdate && detail.status !== 'Received' && (
+                <button className="xh-btn xh-btn-primary" onClick={() => openReceive(detail)}>
+                  <PackageCheck className="h-4 w-4" />
+                  Catat Penerimaan
+                </button>
+              )}
+            </>
+          )
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <DescList
+              items={[
+                { label: 'No. DO', value: <CodeBadge>{detail.doNumber}</CodeBadge> },
+                { label: 'Status', value: <StatusBadge status={detail.status} /> },
+                { label: 'Tanggal', value: formatDate(detail.date) },
+                { label: 'No. PR', value: detail.prNumber || 'Delivery Order manual' },
+                { label: 'Item', value: detail.itemName },
+                { label: 'Kode Item', value: detail.itemCode || '-' },
+                { label: 'Vendor', value: detail.vendorName },
+                { label: 'Penerima', value: detail.recipient },
+                { label: 'Qty dipesan', value: formatNumber(detail.qtyOrdered) },
+                { label: 'Qty diterima', value: formatNumber(detail.qtyReceived) },
+                { label: 'Harga satuan', value: formatRupiah(detail.price) },
+                { label: 'Nilai', value: formatRupiah(detail.totalValue || detail.price * detail.qtyOrdered) },
+              ]}
+            />
+            {detail.note && <p className="text-[12px] text-muted-foreground">Catatan: {detail.note}</p>}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      {/* Terima barang */}
+      <Modal
+        open={!!receiveOpen}
+        onClose={() => !saving && setReceiveOpen(null)}
+        title="Catat Penerimaan Barang"
+        description="Qty diterima yang sama dengan qty pesanan akan menutup Delivery Order dan menambah stok."
+        size="sm"
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setReceiveOpen(null)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={submitReceive}>
+              Simpan Penerimaan
+            </SubmitButton>
+          </>
+        }
+      >
+        {receiveOpen && (
+          <div className="space-y-3.5">
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-[12px] text-muted-foreground-strong">
+              <p><span className="text-muted-foreground">Item</span> · {receiveOpen.itemName}</p>
+              <p><span className="text-muted-foreground">Qty dipesan</span> · {formatNumber(receiveOpen.qtyOrdered)}</p>
+            </div>
+            <Field label="Qty diterima" required error={errors.qty}>
+              <NumberInput
+                value={receiveForm.qtyReceived}
+                min={0}
+                max={receiveOpen.qtyOrdered}
+                onChange={(n) => setReceiveForm({ ...receiveForm, qtyReceived: n })}
+              />
+            </Field>
+            <Field label="Penerima" htmlFor="do-recv">
+              <input id="do-recv" className="xh-input" value={receiveForm.recipient} onChange={(e) => setReceiveForm({ ...receiveForm, recipient: e.target.value })} />
+            </Field>
+            <Field label="Catatan" htmlFor="do-note">
+              <textarea id="do-note" className="xh-input min-h-[70px] py-2" value={receiveForm.note} onChange={(e) => setReceiveForm({ ...receiveForm, note: e.target.value })} />
+            </Field>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

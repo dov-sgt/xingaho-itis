@@ -1,114 +1,315 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { ClipboardCheck, Plus, Edit, X, ShieldAlert, CheckCircle } from 'lucide-react';
+import { PageHeader, Panel, Field, EmptyState, TableSkeleton } from '@/components/ui/layout';
+import { DataTable, Column, StatusBadge, Pagination, Toolbar, SearchInput } from '@/components/ui/data-display';
+import { Modal, ConfirmDialog, SubmitButton } from '@/components/ui/form';
+import { formatDateTime, formatDate } from '@/lib/format';
+import { ClipboardCheck, Plus, HandCoins, CalendarClock, User2, Info } from 'lucide-react';
+
+type Remark = {
+  id: number;
+  nasabahId: number;
+  agenName: string | null;
+  remark: string;
+  promiseToPay: boolean;
+  promiseDate: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  nasabah: { id: number; nik: string; nama: string };
+};
+
+type NasabahOption = { id: number; nik: string; nama: string };
+
+const EMPTY = { nasabahId: '', agenName: '', remark: '', promiseToPay: false, promiseDate: '' };
 
 export default function RemarksPage() {
-  const { can, role, canAccess, user, apiFetch } = useAuth();
+  const { can, user, apiFetch } = useAuth();
   const { toast } = useToast();
-  const [remarks, setRemarks] = useState<any[]>([]);
-  const [nasabah, setNasabah] = useState<any[]>([]);
+
+  const [rows, setRows] = useState<Remark[]>([]);
+  const [nasabah, setNasabah] = useState<NasabahOption[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [formData, setFormData] = useState({ nasabahId: '', agenName: '', remark: '', promiseToPay: false, promiseDate: '' });
-  const [errorMsg, setErrorMsg] = useState('');
+  const [form, setForm] = useState({ ...EMPTY });
+  const [editing, setEditing] = useState<Remark | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [confirmDelete, setConfirmDelete] = useState<Remark | null>(null);
 
-  const fetchRemarks = () => {
+  const canCreate = can('transaction_stockout', 'create');
+  const canUpdate = can('transaction_stockout', 'update');
+  const canDelete = can('transaction_stockout', 'delete');
+
+  const load = useCallback(async () => {
     setLoading(true);
-    apiFetch('/api/remarks').then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => { setRemarks(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => { toast('error', 'Gagal memuat'); setLoading(false); });
-  };
-
-  const fetchNasabah = () => {
-    apiFetch('/api/nasabah').then((res) => { if (!res.ok) throw new Error('Gagal'); return res.json(); })
-      .then((data) => setNasabah(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  };
-
-  useEffect(() => { fetchRemarks(); fetchNasabah(); }, []);
-
-  const handleOpenAdd = () => { setEditing(null); setFormData({ nasabahId: '', agenName: user?.name || '', remark: '', promiseToPay: false, promiseDate: '' }); setErrorMsg(''); setIsModalOpen(true); };
-  const handleOpenEdit = (r: any) => { setEditing(r); setFormData({ nasabahId: String(r.nasabahId), agenName: r.agenName, remark: r.remark, promiseToPay: r.promiseToPay, promiseDate: r.promiseDate ? new Date(r.promiseDate).toISOString().split('T')[0] : '' }); setErrorMsg(''); setIsModalOpen(true); };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault(); setErrorMsg(''); setSaving(true);
     try {
-      const res = await apiFetch('/api/remarks', { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...formData } : formData) });
-      const result = await res.json();
-      if (!res.ok) { setErrorMsg(result.error); setSaving(false); return; }
-      setIsModalOpen(false); toast('success', editing ? 'Diperbarui' : 'Remark ditambahkan'); fetchRemarks();
-    } catch (err: any) { setErrorMsg(err.message); }
-    setSaving(false);
+      const qs = new URLSearchParams({ page: String(page), pageSize: '10' });
+      if (search.trim()) qs.set('search', search.trim());
+      const res = await apiFetch(`/api/remarks?${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal memuat remarks');
+      setRows(json.data ?? []);
+      setPagination(json.pagination ?? { page, pageSize: 10, total: 0, totalPages: 1 });
+    } catch (e: any) {
+      toast('error', e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch, page, search, toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    apiFetch('/api/nasabah')
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d) ? d : (d.data ?? []);
+        setNasabah(list.map((n: any) => ({ id: n.id, nik: n.nik, nama: n.nama })));
+      })
+      .catch(() => setNasabah([]));
+  }, [apiFetch]);
+
+  const openCreate = () => {
+    setForm({ ...EMPTY, agenName: user?.name ?? '' });
+    setEditing(null);
+    setErrors({});
+    setFormOpen(true);
   };
 
-  if (!canAccess('transaction_item')) {
-    return (<div className="p-8 bg-white rounded-2xl border border-slate-200 text-center"><ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" /><h3 className="text-base font-bold text-slate-800">Akses Ditolak</h3></div>);
-  }
+  const openEdit = (r: Remark) => {
+    setForm({
+      nasabahId: String(r.nasabahId),
+      agenName: r.agenName ?? '',
+      remark: r.remark,
+      promiseToPay: r.promiseToPay,
+      promiseDate: r.promiseDate ? r.promiseDate.slice(0, 10) : '',
+    });
+    setEditing(r);
+    setErrors({});
+    setFormOpen(true);
+  };
 
-  const statusColors: Record<string, string> = { Pending: 'bg-amber-50 text-amber-700', Contacted: 'bg-blue-50 text-blue-700', Promised: 'bg-purple-50 text-purple-700', Paid: 'bg-emerald-50 text-emerald-700' };
+  const submit = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const e: Record<string, string> = {};
+    if (!editing && !form.nasabahId) e.nasabahId = 'Nasabah wajib dipilih.';
+    if (!form.remark.trim()) e.remark = 'Isi remark wajib diisi.';
+    if (form.promiseToPay && !form.promiseDate) e.promiseDate = 'Tentukan tanggal janji bayar.';
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setSaving(true);
+    try {
+      const res = await apiFetch('/api/remarks', {
+        method: editing ? 'PUT' : 'POST',
+        body: JSON.stringify(editing ? { id: editing.id, ...form } : form),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menyimpan');
+      toast('success', editing ? 'Remark diperbarui.' : 'Remark ditambahkan.');
+      setFormOpen(false);
+      load();
+    } catch (err: any) {
+      toast('error', err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!confirmDelete) return;
+    try {
+      const res = await apiFetch(`/api/remarks?id=${confirmDelete.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menghapus');
+      toast('success', 'Remark dihapus.');
+      setConfirmDelete(null);
+      load();
+    } catch (e: any) {
+      toast('error', e.message);
+    }
+  };
+
+  const columns: Column<Remark>[] = [
+    { key: 'createdAt', header: 'Waktu', cell: (r) => <span className="whitespace-nowrap text-[11.5px] text-muted-foreground">{formatDateTime(r.createdAt)}</span> },
+    {
+      key: 'nasabah',
+      header: 'Nasabah',
+      cell: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{r.nasabah?.nama ?? '-'}</p>
+          <p className="truncate font-mono text-[10.5px] text-muted-foreground">{r.nasabah?.nik ?? '-'}</p>
+        </div>
+      ),
+    },
+    { key: 'remark', header: 'Remark', cell: (r) => <span className="line-clamp-2 text-[11.5px] text-muted-foreground-strong">{r.remark}</span> },
+    {
+      key: 'promise',
+      header: 'Janji Bayar',
+      cell: (r) =>
+        r.promiseToPay ? (
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success">
+            <HandCoins className="h-3.5 w-3.5" />
+            {r.promiseDate ? formatDate(r.promiseDate) : 'Ya'}
+          </span>
+        ) : (
+          <span className="text-[11.5px] text-muted-foreground">-</span>
+        ),
+      hideOnMobile: true,
+    },
+    {
+      key: 'agenName',
+      header: 'Agen',
+      cell: (r) => (
+        <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
+          <User2 className="h-3 w-3" />
+          {r.agenName || '-'}
+        </span>
+      ),
+      hideOnMobile: true,
+    },
+    {
+      key: 'actions',
+      header: 'Aksi',
+      className: 'text-right',
+      cell: (r) => (
+        <div className="flex items-center justify-end gap-1">
+          {canUpdate && (
+            <button className="xh-btn xh-btn-ghost h-8 px-2 text-[11.5px]" onClick={() => openEdit(r)}>
+              Ubah
+            </button>
+          )}
+          {canDelete && (
+            <button className="xh-btn xh-btn-ghost h-8 px-2 text-[11.5px] text-danger" onClick={() => setConfirmDelete(r)}>
+              Hapus
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-indigo-600" />Remarks Nasabah</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Catatan interaksi agen dengan nasabah</p>
-        </div>
-        {can('transaction_item', 'create') && <button onClick={handleOpenAdd} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"><Plus className="w-4 h-4" />Tambah</button>}
+    <div className="space-y-5">
+      <PageHeader
+        icon={ClipboardCheck}
+        title="Remarks"
+        description="Catatan hasil kontak nasabah beserta janji bayar bila ada."
+        actions={canCreate && <button className="xh-btn xh-btn-primary" onClick={openCreate}><Plus className="h-4 w-4" />Tambah Remark</button>}
+      />
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-info/25 bg-info-subtle px-3.5 py-2.5 text-[11.5px] leading-relaxed text-info-subtle-foreground">
+        <Info className="mt-px h-4 w-4 shrink-0" />
+        <p>
+          Setiap remark terikat pada satu nasabah. Menghapus nasabah akan ikut menghapus seluruh remark-nya.
+        </p>
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px]">
-            <thead><tr className="bg-slate-50 border-b text-slate-400 uppercase text-[10px]"><th className="py-2 px-3">Tgl</th><th className="py-2 px-3">Nasabah</th><th className="py-2 px-3">Agen</th><th className="py-2 px-3">Remark</th><th className="py-2 px-3 text-center">Promise</th><th className="py-2 px-3 text-center">Status</th><th className="py-2 px-3 text-center">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={7} className="py-8 text-center text-slate-400">Memuat...</td></tr> :
-                remarks.length === 0 ? <tr><td colSpan={7} className="py-8 text-center text-slate-400">Tidak ada remark.</td></tr> :
-                  remarks.map((r) => {
-                    const nas = nasabah.find((n) => n.id === r.nasabahId);
-                    return (
-                      <tr key={r.id} className="hover:bg-slate-50/80">
-                        <td className="py-2 px-3 text-slate-500">{new Date(r.date).toLocaleDateString('id-ID')}</td>
-                        <td className="py-2 px-3 font-semibold">{nas?.nama || '-'}</td>
-                        <td className="py-2 px-3">{r.agenName}</td>
-                        <td className="py-2 px-3 text-slate-600 max-w-xs truncate">{r.remark}</td>
-                        <td className="py-2 px-3 text-center">{r.promiseToPay ? <span className="text-emerald-600 font-semibold">Yes</span> : <span className="text-slate-400">No</span>}</td>
-                        <td className="py-2 px-3 text-center"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[r.status] || 'bg-slate-100'}`}>{r.status}</span></td>
-                        <td className="py-2 px-3 text-center">
-                          {can('transaction_item', 'update') && <button onClick={() => handleOpenEdit(r)} className="p-1 hover:bg-indigo-50 rounded"><Edit className="w-3 h-3" /></button>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
+      <Panel padded={false}>
+        <Toolbar>
+          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari remark, agen, atau nama nasabah…" />
+        </Toolbar>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TableSkeleton rows={6} cols={5} />
+          ) : (
+            <>
+              <DataTable
+                columns={columns}
+                rows={rows}
+                rowKey={(r) => r.id}
+                empty={
+                  <EmptyState
+                    icon={ClipboardCheck}
+                    title="Belum ada remark"
+                    description="Tambahkan catatan kontak nasabah. Pastikan data nasabah sudah tersedia lebih dulu."
+                    action={canCreate ? <button className="xh-btn xh-btn-primary" onClick={openCreate}><Plus className="h-4 w-4" />Tambah Remark</button> : undefined}
+                  />
+                }
+              />
+              <Pagination {...pagination} onPageChange={setPage} />
+            </>
+          )}
         </div>
-      </div>
+      </Panel>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex justify-between mb-4 pb-3 border-b"><h3 className="text-sm font-bold">{editing ? 'Ubah Remark' : 'Tambah Remark'}</h3><button onClick={() => setIsModalOpen(false)}><X className="w-4 h-4" /></button></div>
-            {errorMsg && <div className="mb-4 p-2.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs">{errorMsg}</div>}
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
-              <div><label className="block font-semibold mb-1">Nasabah</label><select required value={formData.nasabahId} onChange={(e) => setFormData({ ...formData, nasabahId: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option value="">-- Pilih Nasabah --</option>{nasabah.map((n) => <option key={n.id} value={n.id}>{n.nama} ({n.nasabahCode})</option>)}</select></div>
-              <div><label className="block font-semibold mb-1">Nama Agen</label><input type="text" required value={formData.agenName} onChange={(e) => setFormData({ ...formData, agenName: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>
-              <div><label className="block font-semibold mb-1">Remark</label><textarea rows={3} required value={formData.remark} onChange={(e) => setFormData({ ...formData, remark: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl"></textarea></div>
-              <div className="flex items-center gap-2"><input type="checkbox" checked={formData.promiseToPay} onChange={(e) => setFormData({ ...formData, promiseToPay: e.target.checked })} className="rounded" /><label className="font-semibold">Promise to Pay</label></div>
-              {formData.promiseToPay && <div><label className="block font-semibold mb-1">Tanggal Promise</label><input type="date" value={formData.promiseDate} onChange={(e) => setFormData({ ...formData, promiseDate: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border rounded-xl" /></div>}
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-xl">Batal</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50">{saving ? 'Menyimpan...' : 'Simpan'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={formOpen}
+        onClose={() => !saving && setFormOpen(false)}
+        title={editing ? 'Ubah Remark' : 'Tambah Remark'}
+        description="Pilih nasabah, isi catatan, dan tandai janji bayar bila ada."
+        footer={
+          <>
+            <button className="xh-btn xh-btn-secondary" onClick={() => setFormOpen(false)} disabled={saving}>
+              Batal
+            </button>
+            <SubmitButton loading={saving} onClick={submit as any}>
+              Simpan
+            </SubmitButton>
+          </>
+        }
+      >
+        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nasabah" required={!editing} error={errors.nasabahId} className="sm:col-span-2">
+            <select
+              className="xh-select"
+              value={form.nasabahId}
+              disabled={!!editing}
+              onChange={(e) => setForm({ ...form, nasabahId: e.target.value })}
+            >
+              <option value="">— Pilih nasabah —</option>
+              {nasabah.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.nama} — {n.nik}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Nama Agen" className="sm:col-span-2">
+            <input className="xh-input" value={form.agenName} onChange={(e) => setForm({ ...form, agenName: e.target.value })} />
+          </Field>
+          <Field label="Remark" required error={errors.remark} className="sm:col-span-2">
+            <textarea className="xh-input min-h-[96px] py-2" value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="Hasil kontak, keluhan, atau tindak lanjut…" />
+          </Field>
+          <Field label="Ada Janji Bayar?">
+            <label className="flex h-9 cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+                checked={form.promiseToPay}
+                onChange={(e) => setForm({ ...form, promiseToPay: e.target.checked })}
+              />
+              <span className="text-[12.5px] text-muted-foreground-strong">
+                {form.promiseToPay ? 'Ya, ada janji bayar' : 'Tidak ada janji bayar'}
+              </span>
+            </label>
+          </Field>
+          {form.promiseToPay && (
+            <Field label="Tanggal Janji Bayar" required error={errors.promiseDate}>
+              <input type="date" className="xh-input" value={form.promiseDate} onChange={(e) => setForm({ ...form, promiseDate: e.target.value })} />
+            </Field>
+          )}
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Hapus remark?"
+        message={<>Catatan untuk nasabah <strong>{confirmDelete?.nasabah?.nama}</strong> akan dihapus permanen.</>}
+        confirmLabel="Hapus"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

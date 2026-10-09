@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermission } from '@/lib/session';
 import { ok, serverError } from '@/lib/api';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'inventory_type_item', 'read');
+  const authError = await requirePermission(req, 'inventory_type_item', 'read');
   if (authError) return authError;
 
   try {

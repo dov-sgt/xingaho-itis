@@ -20,6 +20,8 @@ const ALL_FEATURES = [
   'recording_review',
   'finding',
   'user_management',
+  'division_management',
+  'role_management',
   'reporting',
 ];
 
@@ -202,7 +204,7 @@ const ROLES = [
       master_vendor: [],
       inventory_type_item: [],
       transaction_headset: ['create', 'read', 'update'],
-      transaction_stockout: ['create', 'read', 'update'],
+      transaction_stockout: ['read'],
       purchase_request: [],
       delivery_order: [],
       vendor_submission: [],
@@ -225,7 +227,7 @@ const ROLES = [
       master_vendor: [],
       inventory_type_item: [],
       transaction_headset: ['create', 'read'],
-      transaction_stockout: ['create', 'read'],
+      transaction_stockout: ['read'],
       purchase_request: [],
       delivery_order: [],
       vendor_submission: [],

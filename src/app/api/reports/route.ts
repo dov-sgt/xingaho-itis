@@ -1,101 +1,99 @@
-import { NextResponse } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
+import { requirePermission, getAuthContext } from '@/lib/session';
 import { ok, badRequest, serverError } from '@/lib/api';
-import { NextRequest } from 'next/server';
+import { toInt } from '@/lib/documents';
+import {
+  REPORT_TYPES,
+  ReportType,
+  REPORT_SEARCHABLE,
+  allowedReportTypes,
+} from '@/lib/reports';
 
-const VALID_TYPES = ['headset', 'pr', 'stocks', 'laptops'];
-
+/**
+ * API Reporting.
+ *
+ * Tanpa `?type=` -> mengembalikan daftar laporan yang boleh diakses oleh divisi
+ * user. Dengan `?type=...` -> mengembalikan data laporan tersebut.
+ *
+ * Divisi & role selalu berasal dari database (session), bukan dari input user.
+ */
 export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'reporting', 'read');
+  const authError = await requirePermission(req, 'reporting', 'read');
   if (authError) return authError;
 
   try {
+    const auth = await getAuthContext(req);
+    if (!auth) return badRequest('Sesi tidak valid.');
+
     const { searchParams } = new URL(req.url);
-    const type = searchParams.get('type') || 'headset';
-    const itemName = searchParams.get('item_name') || '';
+    const allowed = allowedReportTypes(auth.divisionCode, auth.role);
+
+    const type = searchParams.get('type');
+    if (!type) return ok({ division: auth.division, types: allowed });
+
+    if (!(REPORT_TYPES as readonly string[]).includes(type)) {
+      return badRequest(`Jenis laporan tidak valid. Valid: ${REPORT_TYPES.join(', ')}`);
+    }
+    if (!allowed.includes(type as ReportType)) {
+      return badRequest('Laporan ini tidak tersedia untuk divisi Anda.');
+    }
+
+    const search = (searchParams.get('search') || '').trim();
     const dateFrom = searchParams.get('date_from') || '';
     const dateTo = searchParams.get('date_to') || '';
+    const page = Math.max(1, toInt(searchParams.get('page'), 1));
+    const pageSize = Math.min(500, Math.max(1, toInt(searchParams.get('pageSize'), 25)));
 
-    if (!VALID_TYPES.includes(type)) {
-      return badRequest(`Report type tidak valid. Valid: ${VALID_TYPES.join(', ')}`);
+    const where: any = {};
+    if (dateFrom || dateTo) {
+      where.date = {
+        gte: dateFrom ? new Date(dateFrom) : new Date('1970-01-01'),
+        lte: dateTo ? new Date(`${dateTo}T23:59:59.999`) : new Date('2999-12-31'),
+      };
+    }
+    if (search) {
+      where.OR = REPORT_SEARCHABLE[type as ReportType].map((f) => ({ [f]: { contains: search } }));
     }
 
-    if (type === 'headset') {
-      const where: any = {};
-      if (itemName) {
-        where.OR = [
-          { name: { contains: itemName } },
-          { nik: { contains: itemName } },
-          { vendor: { contains: itemName } },
-          { project: { contains: itemName } },
-        ];
-      }
-      if (dateFrom || dateTo) {
-        where.date = {};
-        if (dateFrom) where.date.gte = new Date(dateFrom);
-        if (dateTo) where.date.lte = new Date(dateTo);
-      }
-      const data = await prisma.transactionItem.findMany({
-        where,
-        take: 1000,
-        orderBy: { id: 'desc' },
-      });
-      return ok(data);
-    }
+    const skip = (page - 1) * pageSize;
 
-    if (type === 'pr') {
-      const where: any = {};
-      if (itemName) {
-        where.OR = [
-          { itemName: { contains: itemName } },
-          { itemCode: { contains: itemName } },
-          { prNumber: { contains: itemName } },
-        ];
-      }
-      if (dateFrom || dateTo) {
-        where.date = {};
-        if (dateFrom) where.date.gte = new Date(dateFrom);
-        if (dateTo) where.date.lte = new Date(dateTo);
-      }
-      const data = await prisma.purchaseRequest.findMany({
-        where,
-        orderBy: { date: 'desc' },
-      });
-      return ok(data);
-    }
+    const db = prisma as unknown as Record<string, any>;
 
-    if (type === 'stocks') {
-      const where: any = {};
-      if (itemName) {
-        where.OR = [
-          { itemName: { contains: itemName } },
-          { itemCode: { contains: itemName } },
-        ];
-      }
-      const data = await prisma.inventoryStock.findMany({
-        where,
-        orderBy: { id: 'asc' },
-      });
-      return ok(data);
-    }
+const run = async (model: string, orderBy: any, include?: any) => {
+      const [data, total] = await Promise.all([
+        db[model].findMany({ where, orderBy, skip, take: pageSize, ...(include ? { include } : {}) }),
+        db[model].count({ where }),
+      ]);
+      return { data, pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+    };
 
-    if (type === 'laptops') {
-      const where: any = {};
-      if (itemName) {
-        where.OR = [
-          { item: { contains: itemName } },
-          { user: { contains: itemName } },
-        ];
-      }
-      const data = await prisma.laptopAsset.findMany({
-        where,
-        orderBy: { id: 'asc' },
-      });
-      return ok(data);
+    switch (type as ReportType) {
+      case 'headset':
+        return ok(await run('transactionItem', { id: 'desc' }));
+      case 'damaged':
+        return ok(await run('damagedItem', { id: 'desc' }));
+      case 'stocks':
+        return ok(await run('inventoryStock', { updatedAt: 'desc' }));
+      case 'purchase_request':
+        return ok(await run('purchaseRequest', { date: 'desc' }, { items: { orderBy: { sortOrder: 'asc' } } }));
+      case 'delivery_order':
+        return ok(await run('deliveryOrder', { id: 'desc' }));
+      case 'submission':
+        return ok(await run('vendorSubmission', { id: 'desc' }));
+      case 'laptops':
+        return ok(await run('laptopAsset', { date: 'desc' }));
+      case 'employees':
+        return ok(await run('employee', { name: 'asc' }));
+      case 'leave_requests':
+        return ok(await run('leaveRequest', { id: 'desc' }));
+      case 'findings':
+        return ok(await run('finding', { id: 'desc' }));
+      case 'recording_reviews':
+        return ok(await run('recordingReview', { id: 'desc' }));
+      default:
+        return badRequest('Jenis laporan tidak dikenal.');
     }
-
-    return badRequest('Report type unknown');
   } catch (error: any) {
     return serverError(error.message);
   }

@@ -2,55 +2,459 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   XINGHAO ITIS — DESIGN SYSTEM
+   Single source of truth for color, typography, spacing, radius, elevation.
+   All tokens are theme-aware; never hardcode white/black in components.
+   ========================================================================== */
+
 @layer base {
   :root {
+    /* Brand */
+    --brand-50: 238 100% 97%;
+    --brand-100: 233 96% 93%;
+    --brand-200: 226 95% 88%;
+    --brand-300: 224 91% 80%;
+    --brand-400: 224 86% 70%;
+    --brand-500: 235 84% 61%;
+    --brand-600: 243 75% 59%;
+    --brand-700: 245 66% 51%;
+    --brand-800: 244 62% 45%;
+    --brand-900: 243 60% 40%;
+    --brand-950: 240 61% 26%;
+
+    /* Semantic surface scale (light) */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 224 40% 12%;
+    --surface: 0 0% 100%;
+    --surface-raised: 220 33% 99%;
+    --surface-sunken: 220 27% 97%;
+    --surface-overlay: 0 0% 100%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --card-foreground: 224 40% 12%;
+
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 245 66% 51%;
+    --primary-subtle: 233 96% 96%;
+    --primary-subtle-foreground: 245 66% 40%;
+
+    --secondary: 220 27% 96%;
+    --secondary-foreground: 224 40% 16%;
+
+    --muted: 220 27% 96%;
+    --muted-foreground: 220 9% 46%;
+    --muted-foreground-strong: 220 9% 34%;
+
+    --accent: 226 95% 96%;
+    --accent-foreground: 245 66% 40%;
+
+    /* Status */
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+    --success-subtle: 141 79% 95%;
+    --success-subtle-foreground: 142 72% 26%;
+
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --warning-subtle: 48 100% 96%;
+    --warning-subtle-foreground: 26 84% 30%;
+
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --danger-subtle: 0 86% 97%;
+    --danger-subtle-foreground: 0 70% 38%;
+
+    --info: 199 89% 42%;
+    --info-foreground: 0 0% 100%;
+    --info-subtle: 199 92% 96%;
+    --info-subtle-foreground: 201 90% 30%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 91%;
+    --border-strong: 220 16% 84%;
+    --input: 220 20% 91%;
+    --ring: 243 75% 59%;
+
+    /* Sidebar */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 220 20% 96%;
+    --sidebar-muted: 220 16% 74%;
+    --sidebar-primary: 243 75% 66%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 221 39% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 33% 19%;
+
+    /* Table */
+    --table-header: 220 30% 97%;
+    --table-header-foreground: 220 9% 40%;
+    --table-row-hover: 233 96% 97%;
+    --table-stripe: 220 33% 99%;
+
+    --radius: 0.75rem;
+
+    /* Elevation */
+    --shadow-xs: 0 1px 2px 0 hsl(224 40% 12% / 0.05);
+    --shadow-sm: 0 1px 3px 0 hsl(224 40% 12% / 0.08), 0 1px 2px -1px hsl(224 40% 12% / 0.05);
+    --shadow-md: 0 4px 8px -2px hsl(224 40% 12% / 0.08), 0 2px 4px -2px hsl(224 40% 12% / 0.05);
+    --shadow-lg: 0 10px 20px -4px hsl(224 40% 12% / 0.1), 0 4px 8px -4px hsl(224 40% 12% / 0.05);
+    --shadow-xl: 0 20px 32px -8px hsl(224 40% 12% / 0.16), 0 8px 16px -8px hsl(224 40% 12% / 0.06);
+
+    color-scheme: light;
+  }
+
+  /* Gradien logo perusahaan — tetap sama di light & dark (logo adalah aset,
+     bukan surface UI), tapi tetap memakai token agar tidak ada hex di komponen. */
+  :root {
+    --brand-mark-from: hsl(243 75% 59%);
+    --brand-mark-to: hsl(244 62% 28%);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Semantic surface scale (dark) — layered, not inverted */
+    --background: 225 40% 7%;
+    --foreground: 213 31% 93%;
+    --surface: 225 34% 10%;
+    --surface-raised: 225 32% 13%;
+    --surface-sunken: 225 45% 6%;
+    --surface-overlay: 225 34% 11%;
+
+    --card: 225 32% 11%;
+    --card-foreground: 213 31% 93%;
+
+    --primary: 235 89% 68%;
+    --primary-foreground: 225 47% 8%;
+    --primary-hover: 234 89% 74%;
+    --primary-subtle: 240 40% 18%;
+    --primary-subtle-foreground: 233 96% 88%;
+
+    --secondary: 222 30% 17%;
+    --secondary-foreground: 213 31% 93%;
+
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 68%;
+    --muted-foreground-strong: 213 25% 82%;
+
+    --accent: 222 30% 18%;
+    --accent-foreground: 233 96% 90%;
+
+    --success: 142 62% 48%;
+    --success-foreground: 225 47% 8%;
+    --success-subtle: 143 40% 15%;
+    --success-subtle-foreground: 141 79% 78%;
+
+    --warning: 38 92% 58%;
+    --warning-foreground: 225 47% 8%;
+    --warning-subtle: 36 45% 15%;
+    --warning-subtle-foreground: 44 96% 74%;
+
+    --danger: 0 84% 68%;
+    --danger-foreground: 225 47% 8%;
+    --danger-subtle: 0 45% 17%;
+    --danger-subtle-foreground: 0 91% 84%;
+
+    --info: 199 89% 62%;
+    --info-foreground: 225 47% 8%;
+    --info-subtle: 200 45% 16%;
+    --info-subtle-foreground: 199 92% 82%;
+
+    --destructive: 0 84% 68%;
+    --destructive-foreground: 225 47% 8%;
+
+    --border: 220 24% 21%;
+    --border-strong: 220 22% 28%;
+    --input: 220 24% 24%;
+    --ring: 235 89% 68%;
+
+    --sidebar: 225 45% 5%;
+    --sidebar-foreground: 213 25% 88%;
+    --sidebar-muted: 218 14% 62%;
+    --sidebar-primary: 235 89% 68%;
+    --sidebar-primary-foreground: 225 47% 8%;
+    --sidebar-accent: 222 28% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 28% 17%;
+
+    --table-header: 222 30% 14%;
+    --table-header-foreground: 215 20% 76%;
+    --table-row-hover: 234 40% 15%;
+    --table-stripe: 222 32% 12%;
+
+    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.45), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 20px -4px hsl(0 0% 0% / 0.5), 0 4px 8px -4px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 20px 32px -8px hsl(0 0% 0% / 0.6), 0 8px 16px -8px hsl(0 0% 0% / 0.35);
+
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular numerals for all numeric data */
+  table,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard focus everywhere (WCAG 2.4.7) */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
   }
 }
 
-@layer base {
-  * {
-    border-color: hsl(var(--border));
+@layer components {
+  /* ---------------------------------------------------------------------
+     Surfaces
+     --------------------------------------------------------------------- */
+  .surface-card {
+    @apply rounded-xl border border-border bg-card text-card-foreground;
+    box-shadow: var(--shadow-xs);
   }
+
+  .surface-raised {
+    @apply rounded-xl border border-border bg-card;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ---------------------------------------------------------------------
+     Data table — fully theme aware (fixes dark-mode white tables)
+     --------------------------------------------------------------------- */
+  .xh-table-wrapper {
+    @apply w-full overflow-x-auto rounded-xl border border-border bg-card;
+  }
+
+  .xh-table {
+    @apply w-full border-collapse text-[12.5px];
+  }
+
+  .xh-table thead th {
+    @apply sticky top-0 z-10 whitespace-nowrap border-b border-border px-3 py-2.5 text-left align-middle;
+    background-color: hsl(var(--table-header));
+    color: hsl(var(--table-header-foreground));
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .xh-table tbody td {
+    @apply border-b border-border/70 px-3 py-2 align-middle text-foreground;
+  }
+
+  .xh-table tbody tr {
+    background-color: hsl(var(--card));
+    transition: background-color 120ms ease;
+  }
+
+  .xh-table tbody tr:nth-child(even) {
+    background-color: hsl(var(--table-stripe));
+  }
+
+  .xh-table tbody tr:hover {
+    background-color: hsl(var(--table-row-hover));
+  }
+
+  .xh-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .xh-table .num {
+    @apply text-right tabular-nums;
+  }
+
+  .xh-table-compact thead th {
+    @apply px-2 py-1.5;
+  }
+
+  .xh-table-compact tbody td {
+    @apply px-2 py-1.5;
+  }
+
+  /* ---------------------------------------------------------------------
+     Form controls
+     --------------------------------------------------------------------- */
+  .xh-input {
+    @apply h-9 w-full rounded-lg border border-input bg-background px-3 text-[13px] text-foreground
+           placeholder:text-muted-foreground
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .xh-label {
+    @apply mb-1.5 block text-[11.5px] font-semibold text-muted-foreground-strong;
+  }
+
+  .xh-select {
+    @apply h-9 w-full appearance-none rounded-lg border border-input bg-background px-3 pr-8 text-[13px] text-foreground
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+           disabled:cursor-not-allowed disabled:opacity-60;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+  }
+
+  /* ---------------------------------------------------------------------
+     Buttons
+     --------------------------------------------------------------------- */
+  .xh-btn {
+    @apply inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 text-[12.5px]
+           font-semibold transition-colors
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .xh-btn-primary {
+    @apply xh-btn bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm;
+  }
+
+  .xh-btn-secondary {
+    @apply xh-btn border border-border bg-card text-foreground hover:bg-muted;
+  }
+
+  .xh-btn-ghost {
+    @apply xh-btn text-muted-foreground-strong hover:bg-muted hover:text-foreground;
+  }
+
+  .xh-btn-danger {
+    @apply xh-btn bg-danger text-danger-foreground hover:opacity-90 shadow-sm;
+  }
+
+  .xh-btn-sm {
+    @apply h-8 px-2.5 text-[11.5px];
+  }
+
+  /* ---------------------------------------------------------------------
+     Status chips
+     --------------------------------------------------------------------- */
+  .xh-chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide;
+  }
+
+  .xh-chip-neutral { @apply border-border bg-muted text-muted-foreground-strong; }
+  .xh-chip-success { @apply border-transparent bg-[hsl(var(--success-subtle))] text-[hsl(var(--success-subtle-foreground))]; }
+  .xh-chip-warning { @apply border-transparent bg-[hsl(var(--warning-subtle))] text-[hsl(var(--warning-subtle-foreground))]; }
+  .xh-chip-danger  { @apply border-transparent bg-[hsl(var(--danger-subtle))] text-[hsl(var(--danger-subtle-foreground))]; }
+  .xh-chip-info    { @apply border-transparent bg-[hsl(var(--info-subtle))] text-[hsl(var(--info-subtle-foreground))]; }
+  .xh-chip-primary { @apply border-transparent bg-[hsl(var(--primary-subtle))] text-[hsl(var(--primary-subtle-foreground))]; }
+
+  /* ---------------------------------------------------------------------
+     Section title
+     --------------------------------------------------------------------- */
+  .xh-section-title {
+    @apply text-[13px] font-bold uppercase tracking-wider text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border-strong)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border-strong));
+    border-radius: 999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ==========================================================================
+   PRINT / PDF (item 5)
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 12mm 14mm;
+  }
+
+  html,
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: #ffffff !important;
+    color: #000000 !important;
   }
+
+  .no-print,
+  nav,
+  aside,
+  header[data-app-chrome] {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5pt;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #333;
+    padding: 5px 7px;
+  }
+
+  .print-table th {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    text-align: left;
+  }
+
+  .print-table .num {
+    text-align: right;
+  }
+
+  .print-break-avoid {
+    break-inside: avoid;
+  }
+}
+
+.print-only {
+  display: none;
 }

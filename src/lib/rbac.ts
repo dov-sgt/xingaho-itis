@@ -1,99 +1,120 @@
-export type Role = 'SUPERADMIN' | 'MANAGER_OPS' | 'SPV_OPS' | 'LEADER_OPS' | 'AGEN' | 'SPV_QC' | 'STAFF_QC' | 'SPV_HR' | 'STAFF_HR';
+/**
+ * RBAC — Database driven.
+ *
+ * IMPORTANT: roles and permissions are NOT hardcoded here. They live in the
+ * `Role.permissions` JSON column and are resolved server-side in
+ * `src/lib/session.ts`. This module only holds the shared *vocabulary*
+ * (feature keys + action keys) plus pure helpers so client and server agree.
+ *
+ * `Role` is intentionally a plain `string`: role codes are user-managed via
+ * the Role Management screen, so a hardcoded union would drift out of sync.
+ */
 
+export type Role = string;
 export type Action = 'create' | 'read' | 'update' | 'delete';
 
-export type Division = 'IT' | 'OPS' | 'QC' | 'HR';
+export const ACTIONS: Action[] = ['create', 'read', 'update', 'delete'];
 
-export type Feature =
-  | 'dashboard'
-  | 'master_item'
-  | 'master_vendor'
-  | 'inventory_type_item'
-  | 'transaction_item'
-  | 'purchase_request'
-  | 'delivery_order'
-  | 'vendor_submission'
-  | 'user_management'
-  | 'reporting';
-
-// Division-specific menu visibility
-export const DIVISION_MENUS: Record<Division, Feature[]> = {
-  IT: ['dashboard', 'master_item', 'master_vendor', 'inventory_type_item', 'transaction_item', 'purchase_request', 'delivery_order', 'vendor_submission', 'reporting'],
-  OPS: ['dashboard', 'transaction_item', 'reporting'],
-  QC: ['dashboard', 'transaction_item', 'reporting'],
-  HR: ['dashboard', 'user_management', 'reporting'],
+export const ACTION_LABELS: Record<Action, string> = {
+  create: 'Buat',
+  read: 'Lihat',
+  update: 'Ubah',
+  delete: 'Hapus',
 };
 
-// Role permissions (same as before, but now division-scoped)
-export const ROLE_PERMISSIONS: Record<Role, Record<Feature, Action[]>> = {
-  SUPERADMIN: {
-    dashboard: ['read'], master_item: ['create', 'read', 'update', 'delete'], master_vendor: ['create', 'read', 'update', 'delete'],
-    inventory_type_item: ['create', 'read', 'update', 'delete'], transaction_item: ['create', 'read', 'update', 'delete'],
-    purchase_request: ['create', 'read', 'update', 'delete'], delivery_order: ['create', 'read', 'update', 'delete'],
-    vendor_submission: ['create', 'read', 'update', 'delete'], user_management: ['create', 'read', 'update', 'delete'],
-    reporting: ['create', 'read', 'update', 'delete'],
-  },
-  MANAGER_OPS: {
-    dashboard: ['read'], master_item: ['read'], master_vendor: ['read'], inventory_type_item: ['read'],
-    transaction_item: ['create', 'read', 'update'], purchase_request: [], delivery_order: [],
-    vendor_submission: ['read'], user_management: [], reporting: ['read'],
-  },
-  SPV_OPS: {
-    dashboard: ['read'], master_item: ['read'], master_vendor: ['read'], inventory_type_item: ['create', 'read', 'update'],
-    transaction_item: ['create', 'read', 'update'], purchase_request: [], delivery_order: [],
-    vendor_submission: ['read'], user_management: [], reporting: ['read'],
-  },
-  LEADER_OPS: {
-    dashboard: ['read'], master_item: ['read'], master_vendor: ['read'], inventory_type_item: ['read'],
-    transaction_item: ['create', 'read', 'update'], purchase_request: [], delivery_order: [],
-    vendor_submission: ['read'], user_management: [], reporting: ['read'],
-  },
-  AGEN: {
-    dashboard: ['read'], master_item: [], master_vendor: [], inventory_type_item: [],
-    transaction_item: ['create', 'read'], purchase_request: [], delivery_order: [],
-    vendor_submission: [], user_management: [], reporting: [],
-  },
-  SPV_QC: {
-    dashboard: ['read'], master_item: [], master_vendor: [], inventory_type_item: [],
-    transaction_item: ['create', 'read', 'update'], purchase_request: [], delivery_order: [],
-    vendor_submission: [], user_management: [], reporting: ['read'],
-  },
-  STAFF_QC: {
-    dashboard: ['read'], master_item: [], master_vendor: [], inventory_type_item: [],
-    transaction_item: ['create', 'read'], purchase_request: [], delivery_order: [],
-    vendor_submission: [], user_management: [], reporting: [],
-  },
-  SPV_HR: {
-    dashboard: ['read'], master_item: [], master_vendor: [], inventory_type_item: [],
-    transaction_item: ['read'], purchase_request: [], delivery_order: [],
-    vendor_submission: [], user_management: ['read'], reporting: ['read'],
-  },
-  STAFF_HR: {
-    dashboard: ['read'], master_item: [], master_vendor: [], inventory_type_item: [],
-    transaction_item: ['read'], purchase_request: [], delivery_order: [],
-    vendor_submission: [], user_management: [], reporting: [],
-  },
+/**
+ * Canonical feature keys. Anything added here must also exist in the sidebar
+ * (`src/components/Sidebar.tsx`) so menus and permissions stay aligned.
+ */
+export const FEATURES = [
+  'dashboard',
+  'master_item',
+  'master_vendor',
+  'inventory_type_item',
+  'transaction_headset',
+  'transaction_stockout',
+  'purchase_request',
+  'delivery_order',
+  'vendor_submission',
+  'booking',
+  'servis_asset',
+  'log_ruang_server',
+  'recording_review',
+  'finding',
+  'user_management',
+  'division_management',
+  'role_management',
+  'reporting',
+] as const;
+
+export type Feature = (typeof FEATURES)[number];
+
+/**
+ * Legacy / alternate feature keys kept working so older API routes and older
+ * permission rows keep behaving exactly as before.
+ */
+export const FEATURE_ALIASES: Record<string, Feature> = {
+  transaction_item: 'transaction_headset',
+  headset: 'transaction_headset',
+  headset_user: 'transaction_headset',
+  stock_out: 'transaction_stockout',
+  users: 'user_management',
 };
 
-export function hasPermission(role: Role, feature: Feature, action: Action): boolean {
-  const permissions = ROLE_PERMISSIONS[role]?.[feature] || [];
-  return permissions.includes(action);
+export function normalizeFeature(feature: string): Feature {
+  return (FEATURE_ALIASES[feature] ?? feature) as Feature;
 }
 
-export function canAccessMenu(role: Role, feature: Feature): boolean {
-  const permissions = ROLE_PERMISSIONS[role]?.[feature] || [];
-  return permissions.length > 0;
+export type PermissionMap = Record<string, Action[] | undefined>;
+
+/**
+ * Safe permission lookup — tolerates malformed JSON stored by users.
+ */
+export function hasPermissionIn(
+  permissions: PermissionMap | null | undefined,
+  feature: string,
+  action: Action,
+): boolean {
+  if (!permissions) return false;
+  const key = normalizeFeature(feature);
+  const list = permissions[key];
+  if (!Array.isArray(list)) return false;
+  return list.includes(action);
 }
 
-// Check if user can access a specific division
-export function canAccessDivision(role: Role, userDivision: string | null, targetDivision: Division): boolean {
-  // SuperAdmin can access all divisions
-  if (role === 'SUPERADMIN') return true;
-  // User can only access their own division
-  return userDivision === targetDivision;
+export function canAccessMenuIn(
+  permissions: PermissionMap | null | undefined,
+  feature: string,
+): boolean {
+  if (!permissions) return false;
+  const list = permissions[normalizeFeature(feature)];
+  return Array.isArray(list) && list.length > 0;
 }
 
-// Get menus for a specific division
-export function getDivisionMenus(division: Division): Feature[] {
-  return DIVISION_MENUS[division] || [];
+/** SuperAdmin short-circuit used by both client and server. */
+export function isSuperAdmin(role: Role | null | undefined): boolean {
+  return String(role || '').toUpperCase() === 'SUPERADMIN';
+}
+
+export function hasPermission(
+  permissions: PermissionMap | null | undefined,
+  feature: string,
+  action: Action,
+): boolean {
+  return hasPermissionIn(permissions, feature, action);
+}
+
+export function canAccessMenu(
+  permissions: PermissionMap | null | undefined,
+  feature: string,
+): boolean {
+  return canAccessMenuIn(permissions, feature);
+}
+
+/** Human readable label for a role code, e.g. OPS_SPV -> "Ops Spv". */
+export function roleLabel(code: string): string {
+  return code
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }

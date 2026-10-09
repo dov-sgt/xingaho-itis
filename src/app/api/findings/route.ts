@@ -1,75 +1,51 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
-import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, collectErrors } from '@/lib/validation';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
+import { FINDING_TYPES, SEVERITIES, FINDING_STATUSES } from '@/lib/options';
 
-export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'read');
-  if (authError) return authError;
-  try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || '';
-    const severity = searchParams.get('severity') || '';
-    const where: any = {};
-    if (status) where.status = status;
-    if (severity) where.severity = severity;
-    const findings = await prisma.finding.findMany({ where, orderBy: { id: 'desc' } });
-    return ok(findings);
-  } catch (error: any) { return serverError(error.message); }
-}
+const STATUS = FINDING_STATUSES;
 
-export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'create');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { agenName, findingType, severity, description, evidence } = body;
-    const errors = collectErrors([
-      validateRequired(agenName, 'Nama Agen'),
-      validateRequired(findingType, 'Tipe Finding'),
-      validateRequired(severity, 'Severity'),
-      validateRequired(description, 'Deskripsi'),
-    ]);
-    if (errors.length > 0) return validationError(errors);
-    if (!['Low', 'Medium', 'High', 'Critical'].includes(severity)) return badRequest('Severity tidak valid');
+const handlers = buildCrudHandlers({
+  model: 'finding',
+  feature: 'finding',
+  searchFields: ['findingCode', 'agenName', 'description', 'findingType'],
+  statusField: 'status',
+  dateField: 'date',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.agenName) e.push('Nama agen wajib diisi.');
+    if (!body.description) e.push('Deskripsi temuan wajib diisi.');
+    if (body.findingType && !FINDING_TYPES.includes(body.findingType)) {
+      e.push(`Tipe temuan harus salah satu dari: ${FINDING_TYPES.join(', ')}.`);
+    }
+    if (body.severity && !SEVERITIES.includes(body.severity)) {
+      e.push(`Severity harus salah satu dari: ${SEVERITIES.join(', ')}.`);
+    }
+    if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
+    return e;
+  },
+  toCreate: async (body) => ({
+    findingCode: await nextCode('finding', 'FND', 4),
+    date: body.date ? new Date(body.date) : new Date(),
+    agenName: body.agenName,
+    findingType: body.findingType || 'Kualitas',
+    severity: body.severity || 'Medium',
+    description: body.description,
+    evidence: body.evidence || null,
+    status: body.status || 'Open',
+  }),
+  toUpdate: (body) => ({
+    ...(body.date ? { date: new Date(body.date) } : {}),
+    agenName: body.agenName,
+    findingType: body.findingType,
+    severity: body.severity,
+    description: body.description,
+    evidence: body.evidence ?? null,
+    ...(body.status ? { status: body.status } : {}),
+    ...(body.resolvedBy ? { resolvedBy: body.resolvedBy } : {}),
+    ...(body.resolutionNote !== undefined ? { resolutionNote: body.resolutionNote } : {}),
+  }),
+});
 
-    const count = await prisma.finding.count();
-    const findingCode = `FND-2026-${(count + 1).toString().padStart(4, '0')}`;
-
-    const finding = await prisma.finding.create({
-      data: { findingCode, agenName, findingType, severity, description, evidence: evidence || null },
-    });
-    return ok(finding, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function PUT(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'update');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { id, status, resolvedBy, resolutionNote } = body;
-    if (!id) return badRequest('ID is required');
-    if (status && !['Open', 'In Progress', 'Resolved', 'Escalated'].includes(status)) return badRequest('Status tidak valid');
-    const data: any = {};
-    if (status) data.status = status;
-    if (resolvedBy) data.resolvedBy = resolvedBy;
-    if (resolutionNote !== undefined) data.resolutionNote = resolutionNote;
-    const updated = await prisma.finding.update({ where: { id: Number(id) }, data });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function DELETE(req: NextRequest) {
-  const authError = requirePermission(req, 'transaction_item', 'delete');
-  if (authError) return authError;
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return badRequest('ID is required');
-    await prisma.finding.delete({ where: { id: Number(id) } });
-    return ok({ success: true });
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

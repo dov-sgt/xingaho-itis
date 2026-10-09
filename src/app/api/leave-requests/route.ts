@@ -1,66 +1,48 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requirePermission } from '@/lib/session';
-import { ok, badRequest, serverError, validationError } from '@/lib/api';
-import { validateRequired, validateString, collectErrors } from '@/lib/validation';
-import { NextRequest } from 'next/server';
+import { buildCrudHandlers, nextCode } from '@/lib/crud-route';
+import { LEAVE_TYPES, LEAVE_STATUSES } from '@/lib/options';
+import { toInt } from '@/lib/documents';
 
-export async function GET(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'read');
-  if (authError) return authError;
-  try {
-    const leaves = await prisma.leaveRequest.findMany({ orderBy: { id: 'desc' } });
-    return ok(leaves);
-  } catch (error: any) { return serverError(error.message); }
-}
+const STATUS = LEAVE_STATUSES;
 
-export async function POST(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'create');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { employeeId, leaveType, startDate, endDate, reason } = body;
-    const errors = collectErrors([
-      validateRequired(employeeId, 'Employee'), validateRequired(leaveType, 'Tipe Cuti'),
-      validateRequired(startDate, 'Tanggal Mulai'), validateRequired(endDate, 'Tanggal Selesai'),
-      validateRequired(reason, 'Alasan'),
-    ]);
-    if (errors.length > 0) return validationError(errors);
+const handlers = buildCrudHandlers({
+  model: 'leaveRequest',
+  feature: 'user_management',
+  searchFields: ['requestCode', 'reason', 'leaveType'],
+  statusField: 'status',
+  dateField: 'startDate',
+  validate: (body) => {
+    const e: string[] = [];
+    if (!body.employeeId) e.push('Karyawan wajib dipilih.');
+    if (!body.leaveType) e.push('Tipe cuti wajib diisi.');
+    if (!body.startDate) e.push('Tanggal mulai wajib diisi.');
+    if (!body.endDate) e.push('Tanggal selesai wajib diisi.');
+    if (body.startDate && body.endDate && new Date(body.endDate) < new Date(body.startDate)) {
+      e.push('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.');
+    }
+    if (body.status && !STATUS.includes(body.status)) e.push(`Status harus salah satu dari: ${STATUS.join(', ')}.`);
+    return e;
+  },
+  toCreate: async (body) => ({
+    requestCode: await nextCode('leaveRequest', 'LV', 4),
+    employeeId: toInt(body.employeeId),
+    leaveType: body.leaveType,
+    startDate: new Date(body.startDate),
+    endDate: new Date(body.endDate),
+    reason: body.reason || '-',
+    status: body.status || 'Pending',
+    approvedBy: body.approvedBy || null,
+  }),
+  toUpdate: (body) => ({
+    employeeId: body.employeeId ? toInt(body.employeeId) : undefined,
+    leaveType: body.leaveType,
+    startDate: body.startDate ? new Date(body.startDate) : undefined,
+    endDate: body.endDate ? new Date(body.endDate) : undefined,
+    reason: body.reason,
+    ...(body.status ? { status: body.status, approvedBy: body.approvedBy || null } : {}),
+  }),
+});
 
-    const count = await prisma.leaveRequest.count();
-    const requestCode = `LVE-2026-${(count + 1).toString().padStart(4, '0')}`;
-
-    const leave = await prisma.leaveRequest.create({
-      data: { requestCode, employeeId: Number(employeeId), leaveType, startDate: new Date(startDate), endDate: new Date(endDate), reason },
-    });
-    return ok(leave, 201);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function PUT(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'update');
-  if (authError) return authError;
-  try {
-    const body = await req.json();
-    const { id, status, approvedBy } = body;
-    if (!id) return badRequest('ID is required');
-    if (status && !['Pending', 'Approved', 'Rejected'].includes(status)) return badRequest('Status tidak valid');
-    const data: any = {};
-    if (status) data.status = status;
-    if (approvedBy) data.approvedBy = approvedBy;
-    const updated = await prisma.leaveRequest.update({ where: { id: Number(id) }, data });
-    return ok(updated);
-  } catch (error: any) { return serverError(error.message); }
-}
-
-export async function DELETE(req: NextRequest) {
-  const authError = requirePermission(req, 'user_management', 'delete');
-  if (authError) return authError;
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return badRequest('ID is required');
-    await prisma.leaveRequest.delete({ where: { id: Number(id) } });
-    return ok({ success: true });
-  } catch (error: any) { return serverError(error.message); }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

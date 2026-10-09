@@ -2,60 +2,76 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, X } from 'lucide-react';
+
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface Toast {
   id: number;
-  type: 'success' | 'error' | 'warning';
+  type: ToastType;
   message: string;
 }
 
 interface ToastContextType {
-  toast: (type: Toast['type'], message: string) => void;
+  toast: (type: ToastType, message: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 let toastId = 0;
 
+/** Warna toast memakai token tema agar konsisten di light & dark mode. */
+const TONE: Record<ToastType, { box: string; icon: React.ReactNode }> = {
+  success: {
+    box: 'border-success/30 bg-success-subtle text-success-subtle-foreground',
+    icon: <CheckCircle2 className="h-4 w-4 text-success" />,
+  },
+  error: {
+    box: 'border-danger/30 bg-danger-subtle text-danger-subtle-foreground',
+    icon: <XCircle className="h-4 w-4 text-danger" />,
+  },
+  warning: {
+    box: 'border-warning/30 bg-warning-subtle text-warning-subtle-foreground',
+    icon: <AlertTriangle className="h-4 w-4 text-warning" />,
+  },
+  info: {
+    box: 'border-info/30 bg-info-subtle text-info-subtle-foreground',
+    icon: <AlertTriangle className="h-4 w-4 text-info" />,
+  },
+};
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((type: Toast['type'], message: string) => {
+  const toast = useCallback((type: ToastType, message: string) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  const removeToast = (id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  const icons = {
-    success: <CheckCircle className="h-4 w-4 text-emerald-500" />,
-    error: <XCircle className="h-4 w-4 text-destructive" />,
-    warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
-  };
+  const removeToast = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] space-y-2 max-w-sm">
+      {/* Toast tidak ikut tercetak saat print/PDF (lihat globals.css). */}
+      <div className="no-print pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
+            role="status"
             className={cn(
-              "flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg text-xs font-medium animate-slide-in bg-background",
-              t.type === 'success' && 'border-emerald-200 text-emerald-800',
-              t.type === 'error' && 'border-destructive/20 text-destructive',
-              t.type === 'warning' && 'border-amber-200 text-amber-800'
+              'pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-3 shadow-lg animate-slide-up',
+              TONE[t.type].box,
             )}
           >
-            {icons[t.type]}
-            <span className="flex-1">{t.message}</span>
-            <button onClick={() => removeToast(t.id)} className="text-muted-foreground hover:text-foreground">
+            <span className="mt-px shrink-0">{TONE[t.type].icon}</span>
+            <span className="min-w-0 flex-1 text-[12.5px] font-medium leading-relaxed">{t.message}</span>
+            <button
+              onClick={() => removeToast(t.id)}
+              aria-label="Tutup notifikasi"
+              className="shrink-0 rounded p-0.5 opacity-60 transition-opacity hover:opacity-100"
+            >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -67,8 +83,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function useToast() {
   const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
+  if (!context) throw new Error('useToast must be used within a ToastProvider');
   return context;
 }

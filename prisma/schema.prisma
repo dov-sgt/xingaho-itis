@@ -27,27 +27,47 @@ model Role {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  username   String   @unique
+  id         Int       @id @default(autoincrement())
+  username   String    @unique
   name       String
   password   String
   roleId     Int
   divisionId Int
   vendorId   Int?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  role       Role     @relation(fields: [roleId], references: [id])
-  division   Division @relation(fields: [divisionId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  role       Role      @relation(fields: [roleId], references: [id])
+  division   Division  @relation(fields: [divisionId], references: [id])
+  sessions   Session[]
+}
+
+/// Server-side session store. Tokens are stored as SHA-256 hashes so a
+/// database leak cannot be replayed as a valid login.
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model MasterItem {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  typeItem  String
-  namaItem  String
-  brand     String
-  updateAt  DateTime @default(now())
-  updateBy  String?
+  id       Int      @id @default(autoincrement())
+  code     String   @unique
+  typeItem String
+  namaItem String
+  brand    String
+  /// Harga satuan acuan (item 12). Nullable + optional, dipakai sebagai sumber
+  /// harga otomatis pada form Pengajuan kategori Headset (item 13).
+  price    Float?
+  updateAt DateTime @default(now())
+  updateBy String?
 }
 
 model MasterVendor {
@@ -77,14 +97,14 @@ model InventoryStock {
 }
 
 model InventoryHistory {
-  id        Int      @id @default(autoincrement())
-  date      DateTime @default(now())
-  category  String
-  stock     Int      @default(0)
-  inQty     Int      @default(0)
-  outQty    Int      @default(0)
-  note      String?
-  updateBy  String?
+  id       Int      @id @default(autoincrement())
+  date     DateTime @default(now())
+  category String
+  stock    Int      @default(0)
+  inQty    Int      @default(0)
+  outQty   Int      @default(0)
+  note     String?
+  updateBy String?
 }
 
 model LaptopAsset {
@@ -104,8 +124,9 @@ model BrokenAsset {
   date        DateTime @default(now())
 }
 
+/// Headset yang dipakai karyawan.
 model TransactionItem {
-  id                 Int      @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   vendorSubmissionId Int?
   date               String
   employeeCategory   String
@@ -113,18 +134,42 @@ model TransactionItem {
   name               String
   condition          String
   vendor             String
-  deposit            Float    @default(0)
+  deposit            Float     @default(0)
   note               String?
   project            String?
-  status             String   @default("Pending")
+  /// Siklus hidup item (item 11): Pending -> Used -> (Good | Damage).
+  /// "Return" dipertahankan hanya sebagai alias historis saat baca.
+  status             String    @default("Pending")
   approvedBy         String?
   approvedAt         DateTime?
   returnCondition    String?
   returnPrice        Float?
   returnNote         String?
   returnedAt         DateTime?
-  updatedAt          DateTime @default(now()) @updatedAt
+  /// Katalog item yang dipinjam (dipakai untuk mengembalikan stok, item 11).
+  itemCode           String?
+  itemName           String?
+  updatedAt          DateTime  @default(now()) @updatedAt
   updatedBy          String?
+}
+
+/// Daftar item berstatus Damage setelah pengembalian (item 11).
+model DamagedItem {
+  id                  Int      @id @default(autoincrement())
+  date                DateTime @default(now())
+  itemCode            String?
+  itemName            String
+  qty                 Int      @default(1)
+  nik                 String?
+  employeeName        String?
+  condition           String   @default("Damage")
+  vendor              String?
+  note                String?
+  sourceTransactionId Int?
+  createdBy           String?
+  createdAt           DateTime @default(now())
+
+  @@index([itemCode])
 }
 
 model StockOutTransaction {
@@ -143,76 +188,128 @@ model StockOutTransaction {
 }
 
 model PurchaseRequest {
-  id         Int      @id @default(autoincrement())
-  prNumber   String   @unique
-  date       DateTime @default(now())
-  typeItem   String
-  itemCode   String?
-  itemName   String
-  biaya      Float    @default(0)
-  qty        Int      @default(1)
-  diskon     Float    @default(0)
-  totalPrice Float    @default(0)
-  note       String?
-  details    String?
-  status     String   @default("Pending")
-  createdBy  String?
-  createdAt  DateTime @default(now())
-  updateAt   DateTime @default(now()) @updatedAt
-  updateBy   String?
+  id             Int                   @id @default(autoincrement())
+  prNumber       String                @unique
+  date           DateTime              @default(now())
+  typeItem       String
+  itemCode       String?
+  itemName       String
+  /// Harga satuan (item utama, dipertahankan untuk kompatibilitas data lama).
+  biaya          Float                 @default(0)
+  qty            Int                   @default(1)
+  /// Discount level transaksi, nominal Rupiah (item 4).
+  diskon         Float                 @default(0)
+  /// Biaya kirim level transaksi, nominal Rupiah (item 4).
+  shipmentCost   Float                 @default(0)
+  /// Total Price = qty x biaya (level transaksi).
+  totalPrice     Float                 @default(0)
+  /// Grand Total = SUM(item totalPrice) + shipmentCost - diskon (item 4).
+  grandTotal     Float                 @default(0)
+  note           String?
+  details        String?
+  status         String                @default("Pending")
+  /// Nama pemohon — ditampilkan di PDF dan area tanda tangan (item 5).
+  requesterName  String?
+  createdBy      String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  createdAt      DateTime              @default(now())
+  updateAt       DateTime              @default(now()) @updatedAt
+  updateBy       String?
+  items          PurchaseRequestItem[]
+  deliveryOrders DeliveryOrder[]
+}
+
+/// Baris item Purchase Request. Satu PR bisa berisi banyak item (item 4).
+model PurchaseRequestItem {
+  id              Int             @id @default(autoincrement())
+  prId            Int
+  itemCode        String?
+  itemName        String
+  qty             Int             @default(1)
+  /// Harga satuan.
+  price           Float           @default(0)
+  /// qty x price — selalu dihitung ulang di server, tidak mempercayai client.
+  totalPrice      Float           @default(0)
+  note            String?
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  purchaseRequest PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
 }
 
 model DeliveryOrder {
-  id          Int       @id @default(autoincrement())
-  doNumber    String    @unique
-  prId        Int
-  prNumber    String?
-  vendorName  String
-  itemCode    String?
-  itemName    String
-  qtyOrdered  Int       @default(0)
-  qtyReceived Int       @default(0)
-  date        DateTime  @default(now())
-  recipient   String
-  status      String    @default("Pending")
-  note        String?
-  receivedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id              Int              @id @default(autoincrement())
+  doNumber        String           @unique
+  prId            Int?
+  prNumber        String?
+  vendorName      String
+  itemCode        String?
+  itemName        String
+  qtyOrdered      Int              @default(0)
+  qtyReceived     Int              @default(0)
+  /// Harga satuan dari PR — dipakai saat DO selesai diterima untuk menambah stok.
+  price           Float            @default(0)
+  totalValue      Float            @default(0)
+  date            DateTime         @default(now())
+  recipient       String
+  status          String           @default("Pending")
+  note            String?
+  receivedAt      DateTime?
+  /// Kunci idempotensi "<prId>:<itemCode|nama item>" — menjamin approve ulang
+  /// tidak membuat Delivery Order duplikat (item 6).
+  dedupeKey       String           @unique
+  createdAt       DateTime         @default(now())
+  purchaseRequest PurchaseRequest? @relation(fields: [prId], references: [id], onDelete: SetNull)
+
+  @@index([prId])
 }
 
 model VendorSubmission {
-  id             Int      @id @default(autoincrement())
-  submissionCode String   @unique
-  date           DateTime @default(now())
-  vendorName     String
-  nik            String?
-  karyawanName   String?
-  project        String?
-  headsetStatus  String?
-  title          String
-  description    String?
-  category       String   @default("Pengajuan Headset")
-  proposedPrice  Float    @default(0)
-  status         String   @default("Pending")
-  adminNote      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                Int       @id @default(autoincrement())
+  submissionCode    String    @unique
+  date              DateTime  @default(now())
+  vendorName        String
+  nik               String?
+  karyawanName      String?
+  project           String?
+  headsetStatus     String?
+  title             String
+  description       String?
+  category          String    @default("Pengajuan Headset")
+  proposedPrice     Float     @default(0)
+  status            String    @default("Pending")
+  adminNote         String?
+  /// "Nama Pembuat" pada form Pengajuan (item 14). Nullable untuk data lama.
+  namaPembuat       String?
+  /// Item katalog yang dipilih saat kategori = Headset (item 13).
+  itemCode          String?
+  itemName          String?
+  /// Salinan harga dari MasterItem saat pengajuan dibuat, agar riwayat harga
+  /// pengajuan tidak ikut berubah bila master item diperbarui.
+  priceSnapshot     Float?
+  /// id PurchaseRequest yang dihasilkan saat pengajuan disetujui (item 11).
+  purchaseRequestId Int?
+  approvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model Booking {
-  id          Int      @id @default(autoincrement())
-  bookingCode String   @unique
+  id           Int      @id @default(autoincrement())
+  bookingCode  String   @unique
   borrowerName String
-  itemType    String
-  startDate   String
-  startTime   String?
-  endDate     String
-  endTime     String?
-  location    String
-  status      String   @default("Pending")
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  itemType     String
+  startDate    String
+  startTime    String?
+  endDate      String
+  endTime      String?
+  location     String
+  status       String   @default("Pending")
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model ServisAsset {
@@ -228,73 +325,73 @@ model ServisAsset {
 }
 
 model LogRuangServer {
-  id            Int      @id @default(autoincrement())
-  logCode       String   @unique
-  date          DateTime @default(now())
-  nama          String
-  jamMasuk      String
-  jamKeluar     String?
-  keperluan     String
-  location      String
-  createdAt     DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  logCode   String   @unique
+  date      DateTime @default(now())
+  nama      String
+  jamMasuk  String
+  jamKeluar String?
+  keperluan String
+  location  String
+  createdAt DateTime @default(now())
 }
 
 model RecordingReview {
-  id          Int      @id @default(autoincrement())
-  reviewCode  String   @unique
-  date        DateTime @default(now())
-  agenName    String
-  nasabahName String?
+  id           Int      @id @default(autoincrement())
+  reviewCode   String   @unique
+  date         DateTime @default(now())
+  agenName     String
+  nasabahName  String?
   recordingUrl String?
-  duration    String?
-  reviewedBy  String
-  compliance  String
-  notes       String?
-  createdAt   DateTime @default(now())
+  duration     String?
+  reviewedBy   String
+  compliance   String
+  notes        String?
+  createdAt    DateTime @default(now())
 }
 
 model Finding {
-  id          Int      @id @default(autoincrement())
-  findingCode String   @unique
-  date        DateTime @default(now())
-  agenName    String
-  findingType String
-  severity    String
-  description String
-  evidence    String?
-  status      String   @default("Open")
-  resolvedBy  String?
+  id             Int      @id @default(autoincrement())
+  findingCode    String   @unique
+  date           DateTime @default(now())
+  agenName       String
+  findingType    String
+  severity       String
+  description    String
+  evidence       String?
+  status         String   @default("Open")
+  resolvedBy     String?
   resolutionNote String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Employee {
-  id            Int      @id @default(autoincrement())
-  employeeCode  String   @unique
-  nik           String   @unique
-  name          String
-  department    String
-  position      String
-  joinDate      DateTime
-  status        String   @default("Active")
-  phone         String?
-  email         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  employeeCode String   @unique
+  nik          String   @unique
+  name         String
+  department   String
+  position     String
+  joinDate     DateTime
+  status       String   @default("Active")
+  phone        String?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model LeaveRequest {
-  id            Int      @id @default(autoincrement())
-  requestCode   String   @unique
-  employeeId    Int
-  leaveType     String
-  startDate     DateTime
-  endDate       DateTime
-  reason        String
-  status        String   @default("Pending")
-  approvedBy    String?
-  createdAt     DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  requestCode String   @unique
+  employeeId  Int
+  leaveType   String
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      String   @default("Pending")
+  approvedBy  String?
+  createdAt   DateTime @default(now())
 }
 
 model PaymentAchievement {
@@ -304,4 +401,34 @@ model PaymentAchievement {
   amount    Float    @default(0)
   status    String   @default("Pending")
   createdAt DateTime @default(now())
+}
+
+/// Data nasabah (divisi Ops).
+model Nasabah {
+  id         Int      @id @default(autoincrement())
+  nik        String   @unique
+  nama       String
+  telepon    String?
+  pinjol     Float    @default(0)
+  jatuhTempo String?
+  assignedTo String?
+  status     String   @default("Aktif")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  remarks    Remark[]
+}
+
+/// Catatan follow-up terhadap nasabah.
+model Remark {
+  id           Int       @id @default(autoincrement())
+  nasabahId    Int
+  agenName     String?
+  remark       String
+  promiseToPay Boolean   @default(false)
+  promiseDate  DateTime?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  nasabah      Nasabah   @relation(fields: [nasabahId], references: [id], onDelete: Cascade)
+
+  @@index([nasabahId])
 }
