@@ -6,13 +6,10 @@ import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/Toast';
 import Link from 'next/link';
 import {
-  Boxes, Headphones, ShoppingCart, PackageCheck,
+  Boxes, Headphones, ShoppingCart, ArrowRight, PackageCheck,
   Users, CreditCard, AlertTriangle, Briefcase, CalendarOff,
+  LayoutDashboard, Settings,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { t } from '@/lib/i18n';
 
 const DIVISIONS = [
   { key: 'IT', label: 'IT', color: 'indigo', icon: Boxes },
@@ -35,8 +32,15 @@ export default function DashboardPage() {
         if (!res.ok) throw new Error('Gagal memuat dashboard');
         return res.json();
       })
-      .then((res) => { setData(res); setLoading(false); })
-      .catch((err) => { console.error(err); toast('error', 'Gagal memuat data dashboard'); setLoading(false); });
+      .then((res) => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast('error', 'Gagal memuat data dashboard');
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -52,12 +56,15 @@ export default function DashboardPage() {
   const categoryCounts = data?.categoryCounts || {};
   const recentTransactions = data?.recentTransactions || [];
 
+  // Division picker for SuperAdmin
   if (role === 'SUPERADMIN') {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Pilih divisi untuk melihat dashboard</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Pilih divisi untuk melihat dashboard
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -83,270 +90,125 @@ export default function DashboardPage() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-sm font-semibold text-foreground">{div.label}</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {div.key === 'IT' && 'Inventaris & Aset'}
-                  {div.key === 'OPS' && 'Penagihan Nasabah'}
-                  {div.key === 'QC' && 'Compliance OJK'}
-                  {div.key === 'HR' && 'Employee & Leave'}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Lihat dashboard {div.label}</p>
               </button>
             );
           })}
         </div>
 
+        {/* Show selected division dashboard */}
         {selectedDivision === 'IT' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">Master Item</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-foreground">{kpis.totalMasterItems || 0}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">Headset User Aktif</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-amber-600">{kpis.activeLoans || 0}</p>
-                </CardContent>
-              </Card>
-              <Link href="/transactions/vendor-submissions">
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-destructive">{kpis.pendingSubmissions || 0}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-              <Link href="/transactions/purchase-requests">
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">Purchase Request Pending</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-primary">{kpis.pendingPR || 0}</p>
-                  </CardContent>
-                </Card>
-              </Link>
+              <div className="bg-card p-5 rounded-xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground">Master Item</p>
+                <h3 className="text-2xl font-bold text-foreground mt-1">{kpis.totalMasterItems || 0}</h3>
+              </div>
+              <div className="bg-card p-5 rounded-xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground">Headset User Aktif</p>
+                <h3 className="text-2xl font-bold text-amber-600 mt-1">{kpis.activeLoans || 0}</h3>
+              </div>
+              <div className="bg-card p-5 rounded-xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</p>
+                <h3 className="text-2xl font-bold text-destructive mt-1">{kpis.pendingSubmissions || 0}</h3>
+              </div>
+              <div className="bg-card p-5 rounded-xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground">Purchase Request</p>
+                <h3 className="text-2xl font-bold text-primary mt-1">{kpis.totalPR || 0}</h3>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-1">
-                <CardHeader>
-                  <CardTitle className="text-sm">Transaksi Item Terkini</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {recentTransactions.slice(0, 5).map((tx: any) => (
-                      <div key={tx.id} className="flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-medium text-foreground">{tx.name}</p>
-                          <p className="text-muted-foreground">{tx.date} • {tx.project}</p>
+              <div className="bg-card p-6 rounded-xl border border-border lg:col-span-1">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Item</h3>
+                <div className="space-y-3">
+                  {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
+                    const total = kpis.totalMasterItems || 1;
+                    const pct = Math.round((count / total) * 100);
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">{cat}</span>
+                          <span className="text-muted-foreground">{count} ({pct}%)</span>
                         </div>
-                        <Badge variant={tx.status === 'Used' ? 'secondary' : tx.status === 'Return' ? 'default' : 'destructive'}>
-                          {tx.status}
-                        </Badge>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-sm">Stok Terkini</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="pb-2 font-medium text-muted-foreground">Item</th>
-                          <th className="pb-2 font-medium text-muted-foreground text-center">Ready</th>
-                          <th className="pb-2 font-medium text-muted-foreground text-center">In</th>
-                          <th className="pb-2 font-medium text-muted-foreground text-center">Out</th>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="bg-card p-6 rounded-xl border border-border lg:col-span-2">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Transaksi Terbaru</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="pb-2 font-medium text-muted-foreground">Tanggal</th>
+                        <th className="pb-2 font-medium text-muted-foreground">NIK</th>
+                        <th className="pb-2 font-medium text-muted-foreground">Nama</th>
+                        <th className="pb-2 font-medium text-muted-foreground">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {recentTransactions.slice(0, 5).map((tx: any) => (
+                        <tr key={tx.id}>
+                          <td className="py-2 text-muted-foreground">{tx.date}</td>
+                          <td className="py-2 text-muted-foreground">{tx.nik}</td>
+                          <td className="py-2 text-foreground">{tx.name}</td>
+                          <td className="py-2">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                              {tx.status}
+                            </span>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {stocks.slice(0, 8).map((stock: any) => (
-                          <tr key={stock.id}>
-                            <td className="py-2 font-medium text-foreground">{stock.itemName}</td>
-                            <td className="py-2 text-center">
-                              <Badge variant={stock.currentStock < 5 ? 'destructive' : 'secondary'}>
-                                {stock.currentStock}
-                              </Badge>
-                            </td>
-                            <td className="py-2 text-center text-muted-foreground">+{stock.inStock}</td>
-                            <td className="py-2 text-center text-muted-foreground">-{stock.outStock}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {selectedDivision === 'OPS' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Total Nasabah</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">{kpis.totalNasabah || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Overdue</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-amber-600">{kpis.overdueNasabah || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Payment Hari Ini</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-emerald-600">Rp {((kpis.todayPayments || 0) / 1000000).toFixed(1)} Jt</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Agen Aktif</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">{kpis.activeAgen || 0}</p>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-xl border border-border">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Operasional</h3>
+              <p className="text-xs text-muted-foreground">Data operasional akan ditampilkan di sini.</p>
+            </div>
           </div>
         )}
 
         {selectedDivision === 'QC' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Total Review</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">{kpis.totalReviews || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Compliant</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-emerald-600">{kpis.compliantReviews || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Non-Compliant</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-destructive">{kpis.nonCompliantReviews || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Open Findings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-amber-600">{kpis.openFindings || 0}</p>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-xl border border-border">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Quality Control</h3>
+              <p className="text-xs text-muted-foreground">Data QC akan ditampilkan di sini.</p>
+            </div>
           </div>
         )}
 
         {selectedDivision === 'HR' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Total Employee</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">{kpis.totalEmployees || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-emerald-600">{kpis.activeEmployees || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">On Leave</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-amber-600">{kpis.onLeaveEmployees || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Pending Leave</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-destructive">{kpis.pendingLeaveRequests || 0}</p>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="bg-card p-6 rounded-xl border border-border">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Human Resources</h3>
+              <p className="text-xs text-muted-foreground">Data HR akan ditampilkan di sini.</p>
+            </div>
           </div>
         )}
       </div>
     );
   }
 
+  // Non-SuperAdmin: show their division dashboard
   if (division === 'OPS') {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Ops Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Penagihan Nasabah & Payment Achievement</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Nasabah</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{kpis.totalNasabah || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Overdue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-amber-600">{kpis.overdueNasabah || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Payment Hari Ini</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-emerald-600">Rp {((kpis.todayPayments || 0) / 1000000).toFixed(1)} Jt</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Agen Aktif</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-primary">{kpis.activeAgen || 0}</p>
-            </CardContent>
-          </Card>
+        <div className="bg-card p-6 rounded-xl border border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Operasional</h3>
+          <p className="text-xs text-muted-foreground">Data operasional akan ditampilkan di sini.</p>
         </div>
       </div>
     );
@@ -355,43 +217,9 @@ export default function DashboardPage() {
   if (division === 'QC') {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">QC Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Compliance OJK & Recording Review</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Review</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{kpis.totalReviews || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Compliant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-emerald-600">{kpis.compliantReviews || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Non-Compliant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-destructive">{kpis.nonCompliantReviews || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Open Findings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-amber-600">{kpis.openFindings || 0}</p>
-            </CardContent>
-          </Card>
+        <div className="bg-card p-6 rounded-xl border border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Quality Control</h3>
+          <p className="text-xs text-muted-foreground">Data QC akan ditampilkan di sini.</p>
         </div>
       </div>
     );
@@ -400,48 +228,15 @@ export default function DashboardPage() {
   if (division === 'HR') {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">HR Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Employee Data & Leave Request</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Employee</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{kpis.totalEmployees || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-emerald-600">{kpis.activeEmployees || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">On Leave</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-amber-600">{kpis.onLeaveEmployees || 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Pending Leave</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-destructive">{kpis.pendingLeaveRequests || 0}</p>
-            </CardContent>
-          </Card>
+        <div className="bg-card p-6 rounded-xl border border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Human Resources</h3>
+          <p className="text-xs text-muted-foreground">Data HR akan ditampilkan di sini.</p>
         </div>
       </div>
     );
   }
 
+  // Default: IT Dashboard
   return (
     <div className="space-y-6">
       <div>
@@ -450,98 +245,74 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Master Item</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-foreground">{kpis.totalMasterItems || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Headset User Aktif</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-amber-600">{kpis.activeLoans || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-destructive">{kpis.pendingSubmissions || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Purchase Request</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-primary">{kpis.totalPR || 0}</p>
-          </CardContent>
-        </Card>
+        <div className="bg-card p-5 rounded-xl border border-border">
+          <p className="text-xs font-medium text-muted-foreground">Master Item</p>
+          <h3 className="text-2xl font-bold text-foreground mt-1">{kpis.totalMasterItems || 0}</h3>
+        </div>
+        <div className="bg-card p-5 rounded-xl border border-border">
+          <p className="text-xs font-medium text-muted-foreground">Headset User Aktif</p>
+          <h3 className="text-2xl font-bold text-amber-600 mt-1">{kpis.activeLoans || 0}</h3>
+        </div>
+        <div className="bg-card p-5 rounded-xl border border-border">
+          <p className="text-xs font-medium text-muted-foreground">Pengajuan Vendor Pending</p>
+          <h3 className="text-2xl font-bold text-destructive mt-1">{kpis.pendingSubmissions || 0}</h3>
+        </div>
+        <div className="bg-card p-5 rounded-xl border border-border">
+          <p className="text-xs font-medium text-muted-foreground">Purchase Request</p>
+          <h3 className="text-2xl font-bold text-primary mt-1">{kpis.totalPR || 0}</h3>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-sm">Kategori Item</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
-                const total = kpis.totalMasterItems || 1;
-                const pct = Math.round((count / total) * 100);
-                return (
-                  <div key={cat}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">{cat}</span>
-                      <span className="text-muted-foreground">{count} ({pct}%)</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
-                    </div>
+        <div className="bg-card p-6 rounded-xl border border-border lg:col-span-1">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Kategori Item</h3>
+          <div className="space-y-3">
+            {Object.entries(categoryCounts).map(([cat, count]: [string, any]) => {
+              const total = kpis.totalMasterItems || 1;
+              const pct = Math.round((count / total) * 100);
+              return (
+                <div key={cat}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">{cat}</span>
+                    <span className="text-muted-foreground">{count} ({pct}%)</span>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm">Stok Terkini</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-2 font-medium text-muted-foreground">Item</th>
-                    <th className="pb-2 font-medium text-muted-foreground text-center">Ready</th>
-                    <th className="pb-2 font-medium text-muted-foreground text-center">In</th>
-                    <th className="pb-2 font-medium text-muted-foreground text-center">Out</th>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="bg-card p-6 rounded-xl border border-border lg:col-span-2">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Transaksi Terbaru</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="pb-2 font-medium text-muted-foreground">Tanggal</th>
+                  <th className="pb-2 font-medium text-muted-foreground">NIK</th>
+                  <th className="pb-2 font-medium text-muted-foreground">Nama</th>
+                  <th className="pb-2 font-medium text-muted-foreground">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {recentTransactions.slice(0, 5).map((tx: any) => (
+                  <tr key={tx.id}>
+                    <td className="py-2 text-muted-foreground">{tx.date}</td>
+                    <td className="py-2 text-muted-foreground">{tx.nik}</td>
+                    <td className="py-2 text-foreground">{tx.name}</td>
+                    <td className="py-2">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {tx.status}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {stocks.slice(0, 8).map((stock: any) => (
-                    <tr key={stock.id}>
-                      <td className="py-2 font-medium text-foreground">{stock.itemName}</td>
-                      <td className="py-2 text-center">
-                        <Badge variant={stock.currentStock < 5 ? 'destructive' : 'secondary'}>
-                          {stock.currentStock}
-                        </Badge>
-                      </td>
-                      <td className="py-2 text-center text-muted-foreground">+{stock.inStock}</td>
-                      <td className="py-2 text-center text-muted-foreground">-{stock.outStock}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
