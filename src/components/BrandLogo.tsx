@@ -59,6 +59,22 @@ export function LogoMark({
   );
 }
 
+/**
+ * Cache modul: pengecekan keberadaan aset PNG cukup dilakukan SATU KALI per
+ * halaman, bukan tiap kali BrandLogo dirender (sidebar + navbar + login).
+ * `null` = belum dicek, `''` = aset tidak ada (pakai inline).
+ */
+let primaryProbe: Promise<string> | null = null;
+
+function probePrimaryAsset(): Promise<string> {
+  if (!primaryProbe) {
+    primaryProbe = fetch(LOGO_PRIMARY, { method: 'HEAD', cache: 'no-store' })
+      .then((r) => (r.ok ? LOGO_PRIMARY : ''))
+      .catch(() => '');
+  }
+  return primaryProbe;
+}
+
 export function BrandLogo({
   size = 32,
   withWordmark = true,
@@ -74,21 +90,14 @@ export function BrandLogo({
   className?: string;
   subtitle?: string;
 }) {
-  // null = belum mencoba, '' = inline fallback, path = file statis
+  // '' = gunakan inline, selain itu = path file statis
   const [src, setSrc] = useState<string | null>(null);
-  const [useInline, setUseInline] = useState(false);
 
-  // Deteksi apakah aset PNG benar-benar ada (HEAD request sekali saat mount).
-  // Ini mencegah gambar kosong bila ada file placeholder yang tidak valid.
   useEffect(() => {
     let cancelled = false;
-    fetch(LOGO_PRIMARY, { method: 'HEAD', cache: 'no-store' })
-      .then((r) => {
-        if (cancelled) return;
-        if (r.ok) setSrc(LOGO_PRIMARY);
-        else setUseInline(true);
-      })
-      .catch(() => !cancelled && setUseInline(true));
+    probePrimaryAsset().then((result) => {
+      if (!cancelled) setSrc(result || LOGO_FALLBACK);
+    });
     return () => {
       cancelled = true;
     };
@@ -96,14 +105,19 @@ export function BrandLogo({
 
   const onError = () => {
     if (src === LOGO_PRIMARY) setSrc(LOGO_FALLBACK);
-    else setUseInline(true);
+    else setSrc(''); // fallback terakhir: SVG inline
   };
 
-  let mark: React.ReactNode;
-  if (src && !useInline) {
-    mark = (
+  const mark: React.ReactNode =
+    src === '' ? (
+      <LogoMark size={size} />
+    ) : src === null ? (
+      // Placeholder dengan ukuran sama supaya layout tidak bergeser saat pengecekan.
+      <span style={{ width: size, height: size }} aria-hidden />
+    ) : (
       // eslint-disable-next-line @next/next/no-img-element
       <img
+        key={src}
         src={src}
         alt={`${COMPANY_FULL_NAME} logo`}
         width={size}
@@ -113,22 +127,6 @@ export function BrandLogo({
         className="shrink-0 rounded-[22%] object-contain"
       />
     );
-  } else if (src === LOGO_FALLBACK && !useInline) {
-    mark = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={LOGO_FALLBACK}
-        alt={`${COMPANY_FULL_NAME} logo`}
-        width={size}
-        height={size}
-        onError={onError}
-        style={{ width: size, height: size }}
-        className="shrink-0 rounded-[22%] object-contain"
-      />
-    );
-  } else {
-    mark = <LogoMark size={size} />;
-  }
 
   if (!withWordmark) {
     return <span className={cn('inline-flex', className)}>{mark}</span>;

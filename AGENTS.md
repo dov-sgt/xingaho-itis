@@ -90,6 +90,19 @@ Nilai uang **selalu disimpan sebagai angka** di database; format hanya untuk tam
 - Schema evolution memakai `prisma db push` (tidak ada folder migrations).
 - Semua kolom baru dibuat **nullable / ber-default** agar data lama tidak rusak.
 
+## Logo perusahaan
+
+`src/components/BrandLogo.tsx` memakai rantai fallback:
+
+1. /pict/xh_logo_1.png — aset PNG asli. Keberadaannya dicek dengan satu HEAD request per halaman (`probePrimaryAsset`, di-cache di level modul).
+2. /pict/xh_logo.svg — aset vektor yang di-commit ke repo (public/pict/xh_logo.svg).
+3. <LogoMark /> — SVG inline, tanpa request jaringan sama sekali.
+4. Wordmark teks — selalu tampil, tidak pernah kosong.
+
+- **`public/pict/xh_logo_1.png` ada di `.gitignore`** dengan sengaja: aset merek asli hanya hidup di server, tidak di repository. Konsekuensinya file itu **tidak akan pernah ikut git pull, dan akan terhapus bila menjalankan git clean -xfd atau membuat clone baru** — simpan salinannya di luar folder repo.
+- Komponen `LogoMark` memakai `--brand-mark-from` / `--brand-mark-to` dari `globals.css`. Warna logo sengaja TIDAK mengikuti tema: logo adalah aset merek.
+- Favicon: `src/app/icon.svg` (App Router, otomatis).
+
 ## Deployment
 
 - **Path**: `/var/www/html/xingaho-itis`
